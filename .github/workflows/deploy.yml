@@ -11,39 +11,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install local dependencies
-        run: npm install
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Deploy to Server via SSH
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
-          source: "./*"
-          target: "/home/${{ secrets.SSH_USER }}/htdocs/${{ secrets.SSH_HOST }}"
-
-      - name: Post-deployment commands
+      - name: Deploy to Server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          port: 22
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/htdocs/${{ secrets.SSH_HOST }}
+            cd /home/janisahil-movie/htdocs/movie.janisahil.com
+            
+            # Pull latest changes from GitHub
+            git pull origin main
             
             # Create .env file from GitHub secrets
             cat > .env << 'EOF'
@@ -59,11 +38,14 @@ jobs:
             TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
             EOF
             
+            # Install dependencies
+            npm install
+            
+            # Build frontend
+            npm run build
+            
             # Install/Update PM2 globally if not present
             npm install pm2@latest -g
-            
-            # Install production dependencies
-            npm install --production
             
             # Start or Reload the application using the ecosystem file with production env
             pm2 startOrReload ecosystem.config.js --env production
@@ -73,5 +55,5 @@ jobs:
             
             # Ensure the PATH is set in crontab (CloudPanel specific requirement)
             # This only needs to run once, but safe to keep
-            (crontab -l | grep -q "pm2 resurrect") || (echo "PATH=$PATH" && echo "@reboot pm2 resurrect &> /dev/null") | crontab -
+            (crontab -l 2>/dev/null | grep -q "pm2 resurrect") || (echo "PATH=\$PATH" && echo "@reboot pm2 resurrect &> /dev/null") | crontab -
 
