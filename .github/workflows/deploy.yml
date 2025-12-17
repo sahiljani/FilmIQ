@@ -19,6 +19,10 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+            # Source NVM to get Node.js in PATH
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
             cd /home/janisahil-movie/htdocs/movie.janisahil.com
             
             # Pull latest changes from GitHub
