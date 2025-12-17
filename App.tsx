@@ -5,6 +5,7 @@ import { generateRecommendations } from './services/geminiService';
 import { dbService } from './services/dbService';
 import PreferenceForm from './components/PreferenceForm';
 import MovieCard from './components/MovieCard';
+import SwipeableMovieCard from './components/SwipeableMovieCard';
 import AuthForm from './components/AuthForm';
 
 const App: React.FC = () => {
@@ -19,6 +20,8 @@ const App: React.FC = () => {
   });
 
   const [showDb, setShowDb] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isResetting, setIsResetting] = useState(false);
 
   const initialize = useCallback(async () => {
     const token = localStorage.getItem('cinewise_token');
@@ -52,6 +55,10 @@ const App: React.FC = () => {
     } else {
       initialize();
     }
+    
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [initialize]);
 
   const handleLogout = () => {
@@ -210,14 +217,34 @@ const App: React.FC = () => {
                             More Recommendations
                         </button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
-                        {state.recommendations.map(movie => <MovieCard key={movie.id} movie={movie} onInteract={handleInteraction} onMostLiked={handleMostLiked} />)}
-                        {state.recommendations.length === 0 && !state.isLoading && (
-                            <div className="col-span-full py-20 text-center">
-                                <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
-                            </div>
-                        )}
-                    </div>
+                    {isMobile ? (
+                        <div className="relative h-[600px] w-full flex justify-center items-center pb-20">
+                            {state.recommendations.length === 0 && !state.isLoading ? (
+                                <div className="py-20 text-center">
+                                    <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
+                                </div>
+                            ) : (
+                                state.recommendations.slice(0, 3).reverse().map((movie, index) => (
+                                    <div key={movie.id} className="absolute" style={{ zIndex: 30 - index * 10 }}>
+                                        <SwipeableMovieCard
+                                            movie={movie}
+                                            onInteract={handleInteraction}
+                                            onMostLiked={handleMostLiked}
+                                        />
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
+                            {state.recommendations.map(movie => <MovieCard key={movie.id} movie={movie} onInteract={handleInteraction} onMostLiked={handleMostLiked} />)}
+                            {state.recommendations.length === 0 && !state.isLoading && (
+                                <div className="col-span-full py-20 text-center">
+                                    <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

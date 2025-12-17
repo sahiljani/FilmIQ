@@ -453,7 +453,10 @@ app.post('/api/tmdb/cache', async (req, res) => {
   }
 });
 
-app.use(express.static(path.join(__dirname, 'dist')));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
+// Serve static files only in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'dist')));
+  app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
+}
 
 app.listen(PORT, () => console.log(`🚀 CineWise Server on Port ${PORT}`));
