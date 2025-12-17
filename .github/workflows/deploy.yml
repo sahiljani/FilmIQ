@@ -30,6 +30,7 @@ jobs:
             
             # Create .env file from GitHub secrets
             cat > .env << 'EOF'
+            NODE_ENV=production
             PORT=${{ secrets.PORT }}
             DB_HOST=${{ secrets.DB_HOST }}
             DB_USER=${{ secrets.DB_USER }}
