@@ -1,0 +1,77 @@
+
+name: Deploy to CloudPanel
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install local dependencies
+        run: npm install
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          source: "./*"
+          target: "/home/${{ secrets.SSH_USER }}/htdocs/${{ secrets.SSH_HOST }}"
+
+      - name: Post-deployment commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          script: |
+            cd /home/${{ secrets.SSH_USER }}/htdocs/${{ secrets.SSH_HOST }}
+            
+            # Create .env file from GitHub secrets
+            cat > .env << 'EOF'
+            PORT=${{ secrets.PORT }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASS=${{ secrets.DB_PASS }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            TMDB_ACCESS_TOKEN=${{ secrets.TMDB_ACCESS_TOKEN }}
+            TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
+            EOF
+            
+            # Install/Update PM2 globally if not present
+            npm install pm2@latest -g
+            
+            # Install production dependencies
+            npm install --production
+            
+            # Start or Reload the application using the ecosystem file with production env
+            pm2 startOrReload ecosystem.config.js --env production
+            
+            # Save PM2 state for reboots
+            pm2 save
+            
+            # Ensure the PATH is set in crontab (CloudPanel specific requirement)
+            # This only needs to run once, but safe to keep
+            (crontab -l | grep -q "pm2 resurrect") || (echo "PATH=$PATH" && echo "@reboot pm2 resurrect &> /dev/null") | crontab -
+

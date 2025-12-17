@@ -1,0 +1,5 @@
+{
+  "name": "Copy of CineWise AI",
+  "description": "An intelligent movie and series recommendation engine that evolves based on your taste. Start with a chain of preferences, then refine suggestions by liking or disliking results.",
+  "requestFramePermissions": []
+}
