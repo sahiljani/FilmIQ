@@ -42,22 +42,15 @@ jobs:
             TMDB_API_KEY=${{ secrets.TMDB_API_KEY }}
             EOF
             
-            # Install dependencies
+            # Always install dependencies
             npm install
             
-            # Build frontend
+            # Always build frontend
             npm run build
             
-            # Install/Update PM2 globally if not present
-            npm install pm2@latest -g
+            # Restart PM2 application using ecosystem config
+            pm2 restart ecosystem.config.js --env production
             
-            # Start or Reload the application using the ecosystem file with production env
-            pm2 startOrReload ecosystem.config.js --env production
-            
-            # Save PM2 state for reboots
+            # Save PM2 state
             pm2 save
-            
-            # Ensure the PATH is set in crontab (CloudPanel specific requirement)
-            # This only needs to run once, but safe to keep
-            (crontab -l 2>/dev/null | grep -q "pm2 resurrect") || (echo "PATH=\$PATH" && echo "@reboot pm2 resurrect &> /dev/null") | crontab -
 
