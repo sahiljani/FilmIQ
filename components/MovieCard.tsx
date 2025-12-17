@@ -4,9 +4,10 @@ import { MovieRecommendation, InteractionType } from '../types';
 interface Props {
   movie: MovieRecommendation;
   onInteract: (id: string, type: InteractionType) => void;
+  onMostLiked?: (id: string) => void;
 }
 
-const MovieCard: React.FC<Props> = ({ movie, onInteract }) => {
+const MovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked }) => {
   // Generate a consistent pseudo-random gradient based on title length
   const colors = [
     'from-blue-900 to-slate-900',
@@ -84,6 +85,13 @@ const MovieCard: React.FC<Props> = ({ movie, onInteract }) => {
             <div className="flex justify-between items-center gap-2 pt-2 border-t border-gray-800">
                 <span className="text-xs text-gray-500">Already watched?</span>
                 <div className="flex gap-2">
+                    <button
+                        onClick={() => onMostLiked?.(movie.id)}
+                        title="Mark as Most Liked"
+                        className="p-2 rounded-full bg-gray-800 hover:bg-purple-900/40 text-gray-400 hover:text-purple-400 transition"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </button>
                     <button
                         onClick={() => onInteract(movie.id, InteractionType.WATCHED_LIKED)}
                         title="Watched & Liked"

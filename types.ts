@@ -42,10 +42,18 @@ export interface Interaction {
   timestamp: number;
 }
 
+export interface MostLikedMovie {
+  movieTitle: string;
+  tmdbId?: number;
+  likeCount: number;
+  likedAt?: string;
+}
+
 export interface AppState {
   preferences: Preferences | null;
   recommendations: MovieRecommendation[];
   history: Interaction[];
+  mostLiked: MostLikedMovie[];
   isLoading: boolean;
   step: 'setup' | 'results';
 }

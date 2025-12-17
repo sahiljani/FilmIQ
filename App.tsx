@@ -5,7 +5,6 @@ import { generateRecommendations } from './services/geminiService';
 import { dbService } from './services/dbService';
 import PreferenceForm from './components/PreferenceForm';
 import MovieCard from './components/MovieCard';
-import DatabasePanel from './components/DatabasePanel';
 import AuthForm from './components/AuthForm';
 
 const App: React.FC = () => {
@@ -14,12 +13,12 @@ const App: React.FC = () => {
     preferences: null,
     recommendations: [],
     history: [],
+    mostLiked: [],
     isLoading: true,
     step: 'setup',
   });
 
   const [showDb, setShowDb] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
 
   const initialize = useCallback(async () => {
     const token = localStorage.getItem('cinewise_token');
@@ -62,6 +61,7 @@ const App: React.FC = () => {
       preferences: null,
       recommendations: [],
       history: [],
+      mostLiked: [],
       isLoading: false,
       step: 'setup',
     });
@@ -82,7 +82,18 @@ const App: React.FC = () => {
   const fetchMore = async (currentHistory?: Interaction[]) => {
     if (!state.preferences) return;
     setState(prev => ({ ...prev, isLoading: true }));
-    const moreSuggestions = await generateRecommendations(state.preferences, currentHistory || state.history);
+    
+    // Include both history and current recommendations to avoid duplicates
+    const allSeenMovies = [
+      ...state.history,
+      ...state.recommendations.map(r => ({ movieTitle: r.title, interaction: 'seen' as any, timestamp: 0 }))
+    ];
+    
+    const moreSuggestions = await generateRecommendations(
+      state.preferences, 
+      currentHistory || allSeenMovies
+    );
+    
     setState(prev => ({ ...prev, isLoading: false, recommendations: [...prev.recommendations, ...moreSuggestions] }));
   };
 
@@ -96,8 +107,45 @@ const App: React.FC = () => {
     
     setState(prev => ({ ...prev, history: newHistory, recommendations: remaining }));
 
-    if (remaining.length <= 3 && !state.isLoading) {
+    // Auto-generate more recommendations when only 4 remain (after removing the current one)
+    // This means user is about to interact with the last suggestion
+    if (remaining.length === 4 && !state.isLoading) {
         fetchMore(newHistory);
+    }
+  };
+
+  const handleMostLiked = async (movieId: string) => {
+    const movie = state.recommendations.find(m => m.id === movieId);
+    if (!movie) return;
+    
+    try {
+      const response = await fetch('/api/most-liked', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('cinewise_token')}`
+        },
+        body: JSON.stringify({
+          movieTitle: movie.title,
+          tmdbId: movie.tmdb_id
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        const existingIndex = state.mostLiked.findIndex(m => m.movieTitle === movie.title);
+        let updatedMostLiked;
+        if (existingIndex >= 0) {
+          updatedMostLiked = [...state.mostLiked];
+          updatedMostLiked[existingIndex].likeCount += 1;
+        } else {
+          updatedMostLiked = [...state.mostLiked, { movieTitle: movie.title, tmdbId: movie.tmdb_id, likeCount: 1 }];
+        }
+        setState(prev => ({ ...prev, mostLiked: updatedMostLiked }));
+      }
+    } catch (err) {
+      console.error('Error saving most liked:', err);
     }
   };
 
@@ -138,12 +186,6 @@ const App: React.FC = () => {
             
             <div className="flex gap-4">
                 <button 
-                    onClick={() => setShowDb(!showDb)}
-                    className={`px-4 py-2 rounded-lg border text-sm transition ${showDb ? 'bg-white text-black border-white' : 'border-gray-700 hover:border-gray-500 text-gray-300'}`}
-                >
-                    {showDb ? 'Hide History' : 'View History'}
-                </button>
-                <button 
                     onClick={handleLogout}
                     className="px-4 py-2 text-sm font-semibold text-gray-400 hover:text-red-400 transition"
                 >
@@ -169,7 +211,7 @@ const App: React.FC = () => {
                         </button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
-                        {state.recommendations.map(movie => <MovieCard key={movie.id} movie={movie} onInteract={handleInteraction} />)}
+                        {state.recommendations.map(movie => <MovieCard key={movie.id} movie={movie} onInteract={handleInteraction} onMostLiked={handleMostLiked} />)}
                         {state.recommendations.length === 0 && !state.isLoading && (
                             <div className="col-span-full py-20 text-center">
                                 <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
@@ -180,10 +222,6 @@ const App: React.FC = () => {
             )}
         </div>
       </main>
-
-      <aside className={`fixed inset-y-0 right-0 z-30 transform transition-transform duration-300 ease-in-out ${showDb ? 'translate-x-0' : 'translate-x-full'}`}>
-        <DatabasePanel history={state.history} prefs={state.preferences} />
-      </aside>
     </div>
   );
 };

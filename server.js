@@ -68,8 +68,25 @@ const Interaction = sequelize.define('Interaction', {
   timestamp: { type: DataTypes.BIGINT, allowNull: false }
 });
 
+const SuggestedMovie = sequelize.define('SuggestedMovie', {
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  movieTitle: { type: DataTypes.STRING, allowNull: false },
+  tmdbId: { type: DataTypes.INTEGER, allowNull: true },
+  suggestedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
+});
+
+const MostLiked = sequelize.define('MostLiked', {
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  movieTitle: { type: DataTypes.STRING, allowNull: false },
+  tmdbId: { type: DataTypes.INTEGER, allowNull: true },
+  likeCount: { type: DataTypes.INTEGER, defaultValue: 1 },
+  likedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
+});
+
 User.hasMany(Preference, { foreignKey: 'userId' });
 User.hasMany(Interaction, { foreignKey: 'userId' });
+User.hasMany(SuggestedMovie, { foreignKey: 'userId' });
+User.hasMany(MostLiked, { foreignKey: 'userId' });
 
 // --- MIGRATION DEFINITIONS ---
 const migrations = [
@@ -111,6 +128,30 @@ const migrations = [
       // Handled by sync, but good to have placeholder
       await MovieCache.sync();
       console.log('Migration 004: MovieCache table verified.');
+    }
+  },
+  {
+    name: '005_create_suggested_movies',
+    run: async (qi) => {
+      try {
+        await SuggestedMovie.sync();
+        await qi.addIndex('SuggestedMovies', ['userId', 'movieTitle']);
+        console.log('Migration 005: SuggestedMovie table created with indices.');
+      } catch (e) {
+        console.log('Migration 005: SuggestedMovie table might already exist, skipping.');
+      }
+    }
+  },
+  {
+    name: '006_create_most_liked',
+    run: async (qi) => {
+      try {
+        await MostLiked.sync();
+        await qi.addIndex('MostLikeds', ['userId', 'movieTitle']);
+        console.log('Migration 006: MostLiked table created with indices.');
+      } catch (e) {
+        console.log('Migration 006: MostLiked table might already exist, skipping.');
+      }
     }
   }
 ];
@@ -260,6 +301,114 @@ app.post('/api/interactions', authenticateToken, async (req, res) => {
   try {
     const interaction = await Interaction.create({ ...req.body, userId: req.user.id });
     res.json(interaction);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- SUGGESTED MOVIES ENDPOINTS ---
+app.get('/api/suggested-movies', authenticateToken, async (req, res) => {
+  try {
+    const suggestedMovies = await SuggestedMovie.findAll({
+      where: { userId: req.user.id },
+      attributes: ['movieTitle', 'tmdbId']
+    });
+    const movieTitles = suggestedMovies.map(m => m.movieTitle);
+    res.json({ suggestedMovies: movieTitles });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/suggested-movies', authenticateToken, async (req, res) => {
+  try {
+    const { movieTitle, tmdbId } = req.body;
+    
+    // Check if already suggested
+    const existing = await SuggestedMovie.findOne({
+      where: { userId: req.user.id, movieTitle }
+    });
+    
+    if (existing) {
+      return res.json({ message: 'Already suggested', success: false });
+    }
+    
+    // Save as suggested
+    const suggested = await SuggestedMovie.create({
+      userId: req.user.id,
+      movieTitle,
+      tmdbId
+    });
+    
+    res.json({ success: true, suggested });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/suggested-movies/batch', authenticateToken, async (req, res) => {
+  try {
+    const { movies } = req.body; // Array of { movieTitle, tmdbId }
+    
+    const results = [];
+    for (const movie of movies) {
+      const existing = await SuggestedMovie.findOne({
+        where: { userId: req.user.id, movieTitle: movie.movieTitle }
+      });
+      
+      if (!existing) {
+        const suggested = await SuggestedMovie.create({
+          userId: req.user.id,
+          movieTitle: movie.movieTitle,
+          tmdbId: movie.tmdbId
+        });
+        results.push(suggested);
+      }
+    }
+    
+    res.json({ success: true, savedCount: results.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- MOST LIKED MOVIES ENDPOINTS ---
+app.get('/api/most-liked', authenticateToken, async (req, res) => {
+  try {
+    const mostLiked = await MostLiked.findAll({
+      where: { userId: req.user.id },
+      order: [['likeCount', 'DESC']],
+      attributes: ['movieTitle', 'tmdbId', 'likeCount']
+    });
+    res.json({ mostLiked });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/most-liked', authenticateToken, async (req, res) => {
+  try {
+    const { movieTitle, tmdbId } = req.body;
+    
+    const existing = await MostLiked.findOne({
+      where: { userId: req.user.id, movieTitle }
+    });
+    
+    if (existing) {
+      // Increment like count
+      await existing.increment('likeCount');
+      return res.json({ success: true, action: 'incremented', mostLiked: existing });
+    }
+    
+    // Create new most liked entry
+    const mostLiked = await MostLiked.create({
+      userId: req.user.id,
+      movieTitle,
+      tmdbId,
+      likeCount: 1
+    });
+    
+    res.json({ success: true, action: 'created', mostLiked });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
