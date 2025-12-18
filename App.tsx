@@ -407,23 +407,32 @@ const App: React.FC = () => {
                         </div>
                 </div>
                     {viewMode === 'swipe' ? (
-                      <div className="relative h-[70vh] md:h-[600px] w-full flex justify-center items-center pb-20">
+                      <div className="relative h-[70vh] md:h-[600px] w-full flex flex-col justify-center items-center pb-20">
                           {state.recommendations.length === 0 && !state.isLoading ? (
                               <div className="py-20 text-center">
                                   <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
                               </div>
                           ) : (
-                              <AnimatePresence>
-                                {state.recommendations.slice(0, 3).reverse().map((movie, index) => (
-                                    <SwipeableMovieCard
-                                        key={movie.id}
-                                        movie={movie}
-                                        onInteract={handleInteraction}
-                                        onMostLiked={handleMostLiked}
-                                        style={{ zIndex: 30 - index * 10 }}
-                                    />
-                                ))}
-                              </AnimatePresence>
+                              <>
+                                <div className="relative w-full h-full flex justify-center items-center">
+                                    <AnimatePresence>
+                                        {state.recommendations.slice(0, 3).reverse().map((movie, index) => (
+                                            <SwipeableMovieCard
+                                                key={movie.id}
+                                                movie={movie}
+                                                onInteract={handleInteraction}
+                                                onMostLiked={handleMostLiked}
+                                                style={{ zIndex: 30 - index * 10 }}
+                                            />
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                                <div className="mt-8 flex flex-wrap justify-center gap-6 text-xs text-gray-500 font-medium uppercase tracking-widest opacity-60">
+                                    <span className="flex items-center gap-2"><span className="text-red-500">←</span> Swipe Left to Dislike</span>
+                                    <span className="flex items-center gap-2"><span className="text-green-500">→</span> Swipe Right to Like</span>
+                                    <span className="flex items-center gap-2"><svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg> Save to Bucket</span>
+                                </div>
+                              </>
                           )}
                       </div>
                     ) : (

@@ -25,15 +25,15 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
   const favOpacity = useTransform(y, [-150, -50], [1, 0]);
 
   const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const threshold = 100;
+    const threshold = 50; // Lowered threshold for smoother experience
     const { offset, velocity } = info;
 
     if (Math.abs(offset.x) > Math.abs(offset.y)) {
       // Horizontal
-      if (offset.x > threshold || velocity.x > 500) {
+      if (offset.x > threshold || velocity.x > 400) {
         setExitX(1000);
         onInteract(movie.id, InteractionType.LIKED);
-      } else if (offset.x < -threshold || velocity.x < -500) {
+      } else if (offset.x < -threshold || velocity.x < -400) {
         setExitX(-1000);
         onInteract(movie.id, InteractionType.DISLIKED);
       }
@@ -44,7 +44,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
     <motion.div
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.7}
+      dragElastic={0.9} // Looser elastic
       onDragEnd={handleDragEnd}
       style={{
         x,
@@ -106,7 +106,8 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
           ADDED TO BUCKET
         </motion.div>
 
-        <div className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+        {/* Scrollable Content Area - Added padding bottom to prevent content hiding behind buttons */}
+        <div className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent pb-32">
             <div className="min-h-full flex flex-col justify-between">
                 {/* Top Content: Title & Meta */}
                 <div className="p-6 pt-8 bg-gradient-to-b from-black/80 to-transparent shrink-0">
@@ -132,8 +133,8 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
                     </div>
                 </div>
 
-                {/* Bottom Content: Overview & Actions */}
-                <div className="p-6 pb-8 bg-gradient-to-t from-black via-black to-transparent pt-24 shrink-0">
+                {/* Bottom Content: Overview Only */}
+                <div className="p-6 bg-gradient-to-t from-black via-black to-transparent pt-24 shrink-0">
                   <div className="mb-6">
                      <div className="flex items-start gap-2 mb-2 text-white/80">
                         <svg className="w-4 h-4 mt-0.5 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -143,53 +144,53 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
                        {movie.overview || movie.plot}
                      </p>
                   </div>
-
-                  {/* Compact Modern Action Buttons */}
-                  <div className="flex justify-center items-center gap-6">
-                    <button
-                      onClick={() => { setExitX(-1000); onInteract(movie.id, InteractionType.DISLIKED); }}
-                      className="w-14 h-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-red-500/30 text-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg group"
-                      title="Dislike"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path>
-                      </svg>
-                    </button>
-                    
-                    <div className="flex gap-4">
-                        <button
-                        onClick={() => { setExitY(-1000); onMostLiked?.(movie.id); }}
-                        className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-purple-500/30 text-purple-400 hover:bg-purple-600 hover:text-white hover:border-purple-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg"
-                        title="Add to Bucket"
-                        >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
-                        </svg>
-                        </button>
-
-                        <button
-                        onClick={() => { setExitY(1000); onInteract(movie.id, InteractionType.WATCHED_LIKED); }}
-                        className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg"
-                        title="Already Watched"
-                        >
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                        </svg>
-                        </button>
-                    </div>
-
-                    <button
-                      onClick={() => { setExitX(1000); onInteract(movie.id, InteractionType.LIKED); }}
-                      className="w-14 h-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-green-500/30 text-green-500 hover:bg-green-600 hover:text-white hover:border-green-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg group"
-                      title="Like"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                      </svg>
-                    </button>
-                  </div>
                 </div>
             </div>
+        </div>
+
+        {/* Compact Modern Action Buttons - Sticky/Fixed at Bottom */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 p-6 pb-8 bg-gradient-to-t from-black via-black/80 to-transparent flex justify-center items-center gap-6">
+            <button
+              onClick={() => { setExitX(-1000); onInteract(movie.id, InteractionType.DISLIKED); }}
+              className="w-14 h-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-red-500/30 text-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg group"
+              title="Dislike"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            
+            <div className="flex gap-4">
+                <button
+                onClick={() => { setExitY(-1000); onMostLiked?.(movie.id); }}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-purple-500/30 text-purple-400 hover:bg-purple-600 hover:text-white hover:border-purple-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg"
+                title="Add to Bucket"
+                >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                </svg>
+                </button>
+
+                <button
+                onClick={() => { setExitY(1000); onInteract(movie.id, InteractionType.WATCHED_LIKED); }}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg"
+                title="Already Watched"
+                >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                </svg>
+                </button>
+            </div>
+
+            <button
+              onClick={() => { setExitX(1000); onInteract(movie.id, InteractionType.LIKED); }}
+              className="w-14 h-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-green-500/30 text-green-500 hover:bg-green-600 hover:text-white hover:border-green-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg group"
+              title="Like"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+            </button>
         </div>
       </div>
     </motion.div>
