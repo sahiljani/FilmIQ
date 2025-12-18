@@ -33,6 +33,19 @@ export const getMovieDetails = async (tmdbId: number) => {
     try {
       const res = await tmdbClient.get(`/movie/${tmdbId}`);
       const data = res.data;
+
+      // Fetch Providers
+      try {
+        const providerRes = await tmdbClient.get(`/movie/${tmdbId}/watch/providers`);
+        if (providerRes.data && providerRes.data.results && providerRes.data.results.US) {
+            data.providers = providerRes.data.results.US.flatrate || [];
+        } else {
+            data.providers = [];
+        }
+      } catch (pErr) {
+        console.warn('Failed to fetch providers', pErr);
+        data.providers = [];
+      }
       
       // Save to Cache (fire and forget)
       axios.post('/api/tmdb/cache', {

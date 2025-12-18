@@ -36,6 +36,10 @@ export interface MovieRecommendation {
   vote_average?: number;
   tmdb_id?: number;
   overview?: string;
+  providers?: {
+    logo_path: string;
+    provider_name: string;
+  }[];
 }
 
 export enum InteractionType {
@@ -66,5 +70,5 @@ export interface AppState {
   campaigns: Campaign[];
   currentCampaignId: number | null;
   isLoading: boolean;
-  step: 'setup' | 'results' | 'campaigns' | 'bucket';
+  step: 'setup' | 'results' | 'campaigns' | 'bucket' | 'settings';
 }

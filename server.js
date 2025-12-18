@@ -43,7 +43,9 @@ const User = sequelize.define('User', {
   email: { type: DataTypes.STRING, unique: true, allowNull: false },
   password: { type: DataTypes.STRING, allowNull: false },
   resetToken: { type: DataTypes.STRING, allowNull: true },
-  resetTokenExpires: { type: DataTypes.DATE, allowNull: true }
+  resetTokenExpires: { type: DataTypes.DATE, allowNull: true },
+  geminiApiKey: { type: DataTypes.STRING, allowNull: true },
+  geminiModel: { type: DataTypes.STRING, allowNull: true }
 });
 
 const Campaign = sequelize.define('Campaign', {
@@ -191,6 +193,18 @@ const migrations = [
         console.log('Migration 008: Added Campaigns.');
       } catch (e) {
         console.log('Migration 008: Error/Exists', e.message);
+      }
+    }
+  },
+  {
+    name: '009_add_settings_to_user',
+    run: async (qi) => {
+      try {
+        await qi.addColumn('Users', 'geminiApiKey', { type: DataTypes.STRING, allowNull: true });
+        await qi.addColumn('Users', 'geminiModel', { type: DataTypes.STRING, allowNull: true });
+        console.log('Migration 009: Added settings to Users.');
+      } catch (e) {
+        console.log('Migration 009: Columns might already exist, skipping.');
       }
     }
   }
@@ -353,6 +367,32 @@ app.post('/api/interactions', authenticateToken, async (req, res) => {
   }
 });
 
+// --- SETTINGS ENDPOINTS ---
+app.get('/api/settings', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findByPk(req.user.id);
+        res.json({ 
+            geminiApiKey: user.geminiApiKey, 
+            geminiModel: user.geminiModel 
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/settings', authenticateToken, async (req, res) => {
+    try {
+        const { geminiApiKey, geminiModel } = req.body;
+        const user = await User.findByPk(req.user.id);
+        if (geminiApiKey !== undefined) user.geminiApiKey = geminiApiKey;
+        if (geminiModel !== undefined) user.geminiModel = geminiModel;
+        await user.save();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- SERVER-SIDE RECOMMENDATION ENDPOINTS ---
 
 app.get('/api/campaigns', authenticateToken, async (req, res) => {
@@ -419,6 +459,11 @@ app.post('/api/recommendations/generate', authenticateToken, async (req, res) =>
     console.log('[Server] /api/recommendations/generate called for user:', req.user.id);
     const { preferences, history, campaignId } = req.body;
     console.log('[Server] Received preferences:', preferences);
+
+    // Fetch User Settings
+    const user = await User.findByPk(req.user.id);
+    const apiKey = user.geminiApiKey;
+    const modelName = user.geminiModel;
     
     // preferences might be passed or loaded from DB
     
@@ -448,7 +493,9 @@ app.post('/api/recommendations/generate', authenticateToken, async (req, res) =>
           userHistory || [],
           SuggestedMovie,
           MostLiked,
-          MovieCache
+          MovieCache,
+          apiKey,
+          modelName
         );
         return recs;
       });

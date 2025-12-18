@@ -19,19 +19,19 @@ const responseSchema = {
   },
 };
 
-const generateRecommendations = async (prefs, history, alreadySuggested, mostLiked) => {
+const generateRecommendations = async (prefs, history, alreadySuggested, mostLiked, apiKey, modelName) => {
   console.log('[Gemini] generateRecommendations called with prefs:', prefs);
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-  if (!apiKey) {
+  const finalApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!finalApiKey) {
     console.error("GEMINI_API_KEY is missing");
     return [];
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: finalApiKey });
   
-  // Use 'gemini-2.5-flash' for better free tier limits
-  const modelName = "gemini-2.5-flash"; 
-  console.log('[Gemini] Using model:', modelName);
+  // Use passed model or default
+  const finalModelName = modelName || "gemini-2.5-flash"; 
+  console.log('[Gemini] Using model:', finalModelName);
 
   const likedMovies = history
     .filter(h => h.interaction === 'liked' || h.interaction === 'watched_liked')
@@ -87,7 +87,7 @@ const generateRecommendations = async (prefs, history, alreadySuggested, mostLik
   try {
     console.log('[Gemini] Calling generateContent...');
     const response = await ai.models.generateContent({
-      model: modelName,
+      model: finalModelName,
       contents: promptContext,
       config: {
         responseMimeType: "application/json",

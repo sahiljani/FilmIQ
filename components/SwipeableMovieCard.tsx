@@ -112,7 +112,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
         <div className="absolute inset-0 z-10 flex flex-col justify-end pb-24 px-6 pointer-events-none">
              <div className="mb-2">
                  <div className="flex justify-between items-end mb-2">
-                    <h2 className="text-3xl font-heading font-black text-white leading-tight drop-shadow-lg line-clamp-2">
+                    <h2 className={`${movie.title.length > 40 ? 'text-xl' : movie.title.length > 20 ? 'text-2xl' : 'text-3xl'} font-heading font-black text-white leading-tight drop-shadow-lg`}>
                         {movie.title}
                     </h2>
                     <div className="bg-green-500/20 backdrop-blur-md text-green-400 border border-green-500/30 px-2 py-1 rounded-lg font-bold text-xs shadow-lg whitespace-nowrap ml-2 mb-1">
@@ -130,6 +130,20 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
                     </span>
                     )}
                 </div>
+
+                {movie.providers && movie.providers.length > 0 && (
+                    <div className="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-hide mask-image-linear-to-r">
+                        {movie.providers.slice(0, 5).map((provider, idx) => (
+                            <img 
+                                key={idx}
+                                src={`https://image.tmdb.org/t/p/w92${provider.logo_path}`} 
+                                alt={provider.provider_name}
+                                title={provider.provider_name}
+                                className="w-6 h-6 rounded-md shadow-sm border border-white/20"
+                            />
+                        ))}
+                    </div>
+                )}
                 
                 <div className="flex items-start gap-2 mb-2">
                     <svg className="w-4 h-4 mt-0.5 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>

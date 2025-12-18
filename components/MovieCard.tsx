@@ -35,7 +35,7 @@ const MovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked }) => {
       {/* Content */}
       <div className="p-5 pt-32 flex-1 flex flex-col relative z-10">
           <div className="mb-4">
-            <h3 className="text-xl font-heading font-black text-white leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">{movie.title}</h3>
+            <h3 className={`${movie.title.length > 40 ? 'text-lg' : movie.title.length > 20 ? 'text-xl' : 'text-2xl'} font-heading font-black text-white leading-tight mb-1 group-hover:text-primary transition-colors`}>{movie.title}</h3>
             <div className="flex items-center gap-3 text-xs font-medium text-gray-400">
                 <span>{movie.year}</span>
                 <span>•</span>
@@ -49,6 +49,29 @@ const MovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked }) => {
                     </>
                 )}
             </div>
+
+            {/* Availability */}
+            {movie.providers && movie.providers.length > 0 && (
+                <div className="mt-3">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold mb-1">Available on</p>
+                    <div className="flex flex-wrap gap-2">
+                        {movie.providers.slice(0, 5).map((provider, idx) => (
+                            <img 
+                                key={idx}
+                                src={`https://image.tmdb.org/t/p/w92${provider.logo_path}`} 
+                                alt={provider.provider_name}
+                                title={provider.provider_name}
+                                className="w-6 h-6 rounded-md shadow-sm border border-white/10"
+                            />
+                        ))}
+                        {movie.providers.length > 5 && (
+                             <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center text-[9px] text-white font-bold border border-white/10">
+                                +{movie.providers.length - 5}
+                             </div>
+                        )}
+                    </div>
+                </div>
+            )}
           </div>
 
           <div className="flex-1 mb-6">

@@ -44,6 +44,19 @@ async function getMovieDetails(tmdbId, MovieCache) {
   try {
     const res = await tmdbClient.get(`/movie/${tmdbId}`);
     const data = res.data;
+
+    // Fetch Providers
+    try {
+      const providerRes = await tmdbClient.get(`/movie/${tmdbId}/watch/providers`);
+      if (providerRes.data && providerRes.data.results && providerRes.data.results.US) {
+        data.providers = providerRes.data.results.US.flatrate || [];
+      } else {
+        data.providers = [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch providers for', tmdbId);
+      data.providers = [];
+    }
     
     // Save to Cache
     if (MovieCache) {
@@ -99,7 +112,8 @@ async function getPendingRecommendations(userId, campaignId, SuggestedMovie, Mov
                 reason: geminiData.reason,
                 matchScore: geminiData.matchScore,
                 year: geminiData.year,
-                type: geminiData.type
+                type: geminiData.type,
+                providers: details?.providers
             };
         }));
         
@@ -110,7 +124,7 @@ async function getPendingRecommendations(userId, campaignId, SuggestedMovie, Mov
     }
 }
 
-async function generateAndSave(userId, campaignId, prefs, history, SuggestedMovie, MostLiked, MovieCache) {
+async function generateAndSave(userId, campaignId, prefs, history, SuggestedMovie, MostLiked, MovieCache, apiKey, modelName) {
     console.log('[RecommendationService] generateAndSave called with prefs:', prefs);
     // Get context
     const whereClause = { userId };
@@ -138,7 +152,7 @@ async function generateAndSave(userId, campaignId, prefs, history, SuggestedMovi
 
     // Generate
     console.log('[RecommendationService] Calling generateRecommendations...');
-    const rawRecommendations = await generateRecommendations(prefs, history, alreadySuggested, mostLikedData);
+    const rawRecommendations = await generateRecommendations(prefs, history, alreadySuggested, mostLikedData, apiKey, modelName);
     console.log('[RecommendationService] Raw recommendations received:', rawRecommendations?.length || 0);
     
     if (!rawRecommendations || rawRecommendations.length === 0) {
@@ -189,7 +203,8 @@ async function generateAndSave(userId, campaignId, prefs, history, SuggestedMovi
                 reason: item.reason,
                 matchScore: item.matchScore,
                 year: item.year,
-                type: item.type
+                type: item.type,
+                providers: details?.providers
             });
         } catch (e) {
             console.error("Error saving suggestion:", e.message);

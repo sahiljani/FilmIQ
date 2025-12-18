@@ -14,6 +14,7 @@ const Header: React.FC<HeaderProps> = ({ currentStep, onNavigate, onLogout }) =>
   const navItems = [
     { label: 'Home', value: 'campaigns' as const },
     { label: 'My Bucket', value: 'bucket' as const },
+    { label: 'Settings', value: 'settings' as const },
   ];
 
   const handleNavClick = (step: AppState['step']) => {

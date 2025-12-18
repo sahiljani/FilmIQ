@@ -8,6 +8,7 @@ import MovieCard from './components/MovieCard';
 import SwipeableMovieCard from './components/SwipeableMovieCard';
 import AuthForm from './components/AuthForm';
 import Header from './components/Header';
+import Settings from './components/Settings';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -325,6 +326,10 @@ const App: React.FC = () => {
                 <div className="min-h-full flex flex-col justify-center items-center py-10 px-4">
                     <PreferenceForm onSubmit={handleCreateCampaign} isLoading={state.isLoading} />
                 </div>
+            )}
+
+            {state.step === 'settings' && (
+                <Settings />
             )}
 
             {state.step === 'bucket' && (
