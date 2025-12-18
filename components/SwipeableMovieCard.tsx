@@ -52,8 +52,8 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
   return (
     <motion.div
       drag
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }} // Snap back if released
-      dragElastic={0.7} // Feel of the drag
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      dragElastic={0.7}
       onDragEnd={handleDragEnd}
       style={{
         x,
@@ -68,25 +68,26 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
       initial={{ scale: 0.9, opacity: 0, y: 50 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
       exit={{ 
-        x: exitX ?? (Math.random() > 0.5 ? 1000 : -1000), // Default exit if simply unmounted
+        x: exitX ?? (Math.random() > 0.5 ? 1000 : -1000), 
         y: exitY ?? 0,
         opacity: 0,
         transition: { duration: 0.3 } 
       }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="absolute w-[90%] md:w-[400px] h-[60vh] md:h-[550px] shadow-xl rounded-3xl left-0 right-0 mx-auto top-0 bottom-0 my-auto"
+      className="absolute w-[90%] md:w-[400px] h-[70vh] md:h-[650px] shadow-2xl rounded-3xl left-0 right-0 mx-auto top-0 bottom-0 my-auto bg-gray-900 overflow-visible"
     >
-      <div className="relative w-full h-full bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+      <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black">
         {/* Background Poster */}
         {movie.poster_path ? (
           <div className="absolute inset-0 z-0">
             <img 
-              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
+              src={`https://image.tmdb.org/t/p/w780${movie.poster_path}`} 
               alt={movie.title} 
               className="w-full h-full object-cover"
               draggable={false}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+             {/* Stronger gradient overlay for readability */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90"></div>
           </div>
         ) : (
           <div className="absolute inset-0 z-0 bg-gradient-to-br from-purple-900 via-gray-900 to-black"></div>
@@ -95,102 +96,105 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
         {/* Swipe Indicators */}
         <motion.div
           style={{ opacity: likeOpacity }}
-          className="absolute top-10 right-10 z-20 bg-green-500/90 text-white px-8 py-3 rounded-full font-bold text-2xl rotate-12 border-4 border-white"
+          className="absolute top-10 right-10 z-20 bg-green-500/90 text-white px-6 py-2 rounded-full font-bold text-xl rotate-12 border-4 border-white shadow-lg pointer-events-none"
         >
           LIKE
         </motion.div>
         
         <motion.div
           style={{ opacity: nopeOpacity }}
-          className="absolute top-10 left-10 z-20 bg-red-500/90 text-white px-8 py-3 rounded-full font-bold text-2xl -rotate-12 border-4 border-white"
+          className="absolute top-10 left-10 z-20 bg-red-500/90 text-white px-6 py-2 rounded-full font-bold text-xl -rotate-12 border-4 border-white shadow-lg pointer-events-none"
         >
           NOPE
         </motion.div>
 
         <motion.div
           style={{ opacity: favOpacity }}
-          className="absolute top-1/3 left-1/2 transform -translate-x-1/2 z-20 bg-purple-500/90 text-white px-8 py-3 rounded-full font-bold text-2xl border-4 border-white"
+          className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20 bg-purple-500/90 text-white px-6 py-2 rounded-full font-bold text-xl border-4 border-white shadow-lg pointer-events-none"
         >
-          ⭐ FAVORITE
+          FAVORITE
         </motion.div>
 
-        {/* Content */}
-        <div className="absolute bottom-0 left-0 right-0 z-10 p-6 pb-8">
-          <div className="mb-4 flex justify-between items-start">
-            <div>
-              <h2 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
-                {movie.title}
-              </h2>
-              <div className="flex gap-3 items-center text-white/90">
-                <span className="text-lg font-semibold">{movie.year}</span>
-                <span className="text-lg">•</span>
-                <span className="text-lg">{movie.type}</span>
-                {movie.vote_average && (
-                  <>
-                    <span className="text-lg">•</span>
-                    <span className="text-yellow-400 font-bold text-lg">★ {movie.vote_average.toFixed(1)}</span>
-                  </>
-                )}
-              </div>
+        {/* Top Content: Title & Meta */}
+        <div className="absolute top-0 left-0 right-0 z-10 p-6 pt-8 bg-gradient-to-b from-black/80 to-transparent">
+            <div className="flex justify-between items-start">
+                <div className="flex-1 pr-4">
+                    <h2 className="text-3xl font-bold text-white mb-2 drop-shadow-md leading-tight">
+                        {movie.title}
+                    </h2>
+                    <div className="flex flex-wrap gap-2 items-center text-white/90 text-sm font-medium">
+                        <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-xs uppercase tracking-wide">{movie.year}</span>
+                        <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-xs uppercase tracking-wide">{movie.type}</span>
+                        {movie.vote_average && (
+                        <span className="text-yellow-400 font-bold flex items-center gap-1 bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            {movie.vote_average.toFixed(1)}
+                        </span>
+                        )}
+                    </div>
+                </div>
+                <div className="bg-green-600/90 backdrop-blur-md text-white px-3 py-1 rounded-full font-bold text-sm shadow-lg border border-white/10">
+                    {movie.matchScore}% Match
+                </div>
             </div>
-            <div className="bg-green-500 text-white px-4 py-2 rounded-full font-bold text-xl">
-              {movie.matchScore}%
-            </div>
+        </div>
+
+        {/* Bottom Content: Overview & Actions */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 p-6 pb-8 bg-gradient-to-t from-black via-black/90 to-transparent pt-20">
+          
+          <div className="mb-6">
+             <div className="flex items-start gap-2 mb-2 text-white/80">
+                <svg className="w-4 h-4 mt-0.5 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <p className="text-xs italic leading-relaxed text-purple-100">"{movie.reason}"</p>
+             </div>
+             <p className="text-white/70 text-xs line-clamp-3 leading-relaxed">
+               {movie.overview || movie.plot}
+             </p>
           </div>
 
-          <p className="text-white/90 text-base mb-4 line-clamp-3 drop-shadow">
-            {movie.overview || movie.plot}
-          </p>
-
-          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-            <p className="text-xs text-white/70 uppercase tracking-wider font-bold mb-1">
-              Why Watch?
-            </p>
-            <p className="text-sm text-white italic">"{movie.reason}"</p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-6 grid grid-cols-4 gap-3">
+          {/* Compact Modern Action Buttons */}
+          <div className="flex justify-center items-center gap-6">
             <button
               onClick={() => { setExitX(-1000); onInteract(movie.id, InteractionType.DISLIKED); }}
-              className="w-14 h-14 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
+              className="w-14 h-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-red-500/30 text-red-500 hover:bg-red-600 hover:text-white hover:border-red-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg group"
+              title="Dislike"
             >
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
             </button>
             
-            <button
-              onClick={() => { setExitY(-1000); onMostLiked?.(movie.id); }}
-              className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
-            >
-              <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-            </button>
+            <div className="flex gap-4">
+                <button
+                onClick={() => { setExitY(-1000); onMostLiked?.(movie.id); }}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-purple-500/30 text-purple-400 hover:bg-purple-600 hover:text-white hover:border-purple-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg"
+                title="Super Like"
+                >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                </button>
 
-            <button
-              onClick={() => { setExitY(1000); onInteract(movie.id, InteractionType.WATCHED_LIKED); }}
-              className="w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
-            >
-              <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-              </svg>
-            </button>
+                <button
+                onClick={() => { setExitY(1000); onInteract(movie.id, InteractionType.WATCHED_LIKED); }}
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg"
+                title="Already Watched"
+                >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                </svg>
+                </button>
+            </div>
 
             <button
               onClick={() => { setExitX(1000); onInteract(movie.id, InteractionType.LIKED); }}
-              className="w-14 h-14 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
+              className="w-14 h-14 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-green-500/30 text-green-500 hover:bg-green-600 hover:text-white hover:border-green-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg group"
+              title="Like"
             >
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
               </svg>
             </button>
-          </div>
-
-          {/* Swipe Instructions */}
-          <div className="mt-4 text-center text-white/60 text-xs">
-            <p>Swipe left: Nope • Swipe right: Like • Swipe up: Favorite</p>
           </div>
         </div>
       </div>
