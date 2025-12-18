@@ -66,5 +66,5 @@ export interface AppState {
   campaigns: Campaign[];
   currentCampaignId: number | null;
   isLoading: boolean;
-  step: 'setup' | 'results' | 'campaigns';
+  step: 'setup' | 'results' | 'campaigns' | 'bucket';
 }

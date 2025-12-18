@@ -70,8 +70,8 @@ const MovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked }) => {
                     onClick={() => onInteract(movie.id, InteractionType.LIKED)}
                     className="flex items-center justify-center gap-2 py-2 px-4 bg-gray-800 hover:bg-green-900/30 text-gray-300 hover:text-green-400 border border-gray-700 hover:border-green-800 rounded-lg transition text-sm font-medium"
                 >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                    Add to List
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                    Like
                 </button>
                 <button
                     onClick={() => onInteract(movie.id, InteractionType.DISLIKED)}
@@ -87,10 +87,10 @@ const MovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked }) => {
                 <div className="flex gap-2">
                     <button
                         onClick={() => onMostLiked?.(movie.id)}
-                        title="Mark as Most Liked"
+                        title="Add to Bucket"
                         className="p-2 rounded-full bg-gray-800 hover:bg-purple-900/40 text-gray-400 hover:text-purple-400 transition"
                     >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
                     </button>
                     <button
                         onClick={() => onInteract(movie.id, InteractionType.WATCHED_LIKED)}

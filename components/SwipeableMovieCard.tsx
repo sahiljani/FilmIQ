@@ -110,9 +110,9 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
 
         <motion.div
           style={{ opacity: favOpacity }}
-          className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20 bg-purple-500/90 text-white px-6 py-2 rounded-full font-bold text-xl border-4 border-white shadow-lg pointer-events-none"
+          className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-20 bg-purple-500/90 text-white px-6 py-2 rounded-full font-bold text-xl border-4 border-white shadow-lg pointer-events-none whitespace-nowrap"
         >
-          FAVORITE
+          ADDED TO BUCKET
         </motion.div>
 
         {/* Top Content: Title & Meta */}
@@ -168,10 +168,10 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
                 <button
                 onClick={() => { setExitY(-1000); onMostLiked?.(movie.id); }}
                 className="w-10 h-10 rounded-full flex items-center justify-center bg-black/40 backdrop-blur-xl border border-purple-500/30 text-purple-400 hover:bg-purple-600 hover:text-white hover:border-purple-600 hover:scale-110 active:scale-95 transition-all duration-300 shadow-lg"
-                title="Super Like"
+                title="Add to Bucket"
                 >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
                 </svg>
                 </button>
 

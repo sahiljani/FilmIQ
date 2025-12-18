@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { AppState, Preferences, Interaction, InteractionType, MovieRecommendation, Campaign } from './types';
+import { AppState, Preferences, Interaction, InteractionType, MovieRecommendation, Campaign, MostLikedMovie } from './types';
 import { generateRecommendations } from './services/geminiService';
 import { dbService } from './services/dbService';
 import PreferenceForm from './components/PreferenceForm';
@@ -41,9 +41,16 @@ const App: React.FC = () => {
       
       // Fetch Campaigns
       let campaigns: Campaign[] = [];
+      let mostLiked: MostLikedMovie[] = [];
       try {
          const cRes = await fetch('/api/campaigns', { headers: { 'Authorization': `Bearer ${token}` } });
          if (cRes.ok) campaigns = await cRes.json();
+
+         const mRes = await fetch('/api/most-liked', { headers: { 'Authorization': `Bearer ${token}` } });
+         if (mRes.ok) {
+            const data = await mRes.json();
+            mostLiked = data.mostLiked || [];
+         }
       } catch(e) { console.error(e); }
 
       setUser({ email: 'User' }); 
@@ -51,6 +58,7 @@ const App: React.FC = () => {
       setState(prev => ({ 
         ...prev, 
         history: history || [], 
+        mostLiked,
         campaigns,
         isLoading: false,
         step: campaigns.length > 0 ? 'campaigns' : 'setup'
@@ -276,6 +284,13 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex gap-4">
+                <button 
+                    onClick={() => setState(prev => ({ ...prev, step: 'bucket' }))}
+                    className={`w-10 h-10 flex items-center justify-center text-white rounded-full transition shadow-lg border border-white/5 ${state.step === 'bucket' ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+                    title="My Bucket List"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                </button>
                 {state.step !== 'campaigns' && (
                   <button 
                       onClick={() => setState(prev => ({ ...prev, step: 'campaigns' }))}
@@ -339,6 +354,49 @@ const App: React.FC = () => {
             {state.step === 'setup' && (
                 <div className="h-full flex flex-col justify-center items-center pb-20">
                     <PreferenceForm onSubmit={handleCreateCampaign} isLoading={state.isLoading} />
+                </div>
+            )}
+
+            {state.step === 'bucket' && (
+                <div className="max-w-5xl mx-auto p-6">
+                    <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 text-purple-400">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                        My Bucket List
+                    </h2>
+                    {state.mostLiked.length === 0 ? (
+                        <div className="text-center py-20 bg-gray-900 rounded-2xl border border-gray-800">
+                            <p className="text-gray-500 text-lg">Your bucket is empty. Go add some movies!</p>
+                            <button onClick={() => setState(prev => ({ ...prev, step: 'campaigns' }))} className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition">Discover Movies</button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {state.mostLiked.map((item, idx) => (
+                                <div key={idx} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:shadow-purple-900/20 hover:shadow-xl transition p-4 flex gap-4">
+                                   {/* Since mostLiked only stores basic info, we might not have the poster unless cached. For now, show title. */}
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-lg text-white mb-1">{item.movieTitle}</h3>
+                                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                                            <span>TMDB ID: {item.tmdbId}</span>
+                                        </div>
+                                        <div className="mt-4 flex gap-2">
+                                            <a 
+                                              href={`https://www.themoviedb.org/movie/${item.tmdbId}`} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1 rounded-full text-white transition border border-gray-700"
+                                            >
+                                                View on TMDB
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-center justify-center bg-gray-800/50 rounded-lg px-3 py-2">
+                                        <span className="text-2xl font-bold text-purple-500">{item.likeCount}</span>
+                                        <span className="text-[10px] uppercase text-gray-500 font-bold">Likes</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
