@@ -219,6 +219,9 @@ const App: React.FC = () => {
   const handleMostLiked = async (movieId: string) => {
     const movie = state.recommendations.find(m => m.id === movieId);
     if (!movie) return;
+
+    // Proceed to next card immediately
+    handleInteraction(movieId, InteractionType.LIKED);
     
     try {
       const response = await fetch('/api/most-liked', {
@@ -235,15 +238,17 @@ const App: React.FC = () => {
       
       const data = await response.json();
       if (data.success) {
-        const existingIndex = state.mostLiked.findIndex(m => m.movieTitle === movie.title);
-        let updatedMostLiked;
-        if (existingIndex >= 0) {
-          updatedMostLiked = [...state.mostLiked];
-          updatedMostLiked[existingIndex].likeCount += 1;
-        } else {
-          updatedMostLiked = [...state.mostLiked, { movieTitle: movie.title, tmdbId: movie.tmdb_id, likeCount: 1 }];
-        }
-        setState(prev => ({ ...prev, mostLiked: updatedMostLiked }));
+        setState(prev => {
+            const existingIndex = prev.mostLiked.findIndex(m => m.movieTitle === movie.title);
+            let updatedMostLiked;
+            if (existingIndex >= 0) {
+              updatedMostLiked = [...prev.mostLiked];
+              updatedMostLiked[existingIndex].likeCount += 1;
+            } else {
+              updatedMostLiked = [...prev.mostLiked, { movieTitle: movie.title, tmdbId: movie.tmdb_id, likeCount: 1 }];
+            }
+            return { ...prev, mostLiked: updatedMostLiked };
+        });
       }
     } catch (err) {
       console.error('Error saving most liked:', err);
@@ -284,29 +289,7 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex gap-4">
-                <button 
-                    onClick={() => setState(prev => ({ ...prev, step: 'bucket' }))}
-                    className={`w-10 h-10 flex items-center justify-center text-white rounded-full transition shadow-lg border border-white/5 ${state.step === 'bucket' ? 'bg-purple-600' : 'bg-gray-800 hover:bg-gray-700'}`}
-                    title="My Bucket List"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
-                </button>
-                {state.step !== 'campaigns' && (
-                  <button 
-                      onClick={() => setState(prev => ({ ...prev, step: 'campaigns' }))}
-                      className="w-10 h-10 flex items-center justify-center text-white bg-gray-800 hover:bg-gray-700 rounded-full transition shadow-lg border border-white/5"
-                      title="All Campaigns"
-                  >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                  </button>
-                )}
-                <button 
-                    onClick={handleLogout}
-                    className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full transition"
-                    title="Logout"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                </button>
+               {/* Header links removed as per request */}
             </div>
         </header>
 
