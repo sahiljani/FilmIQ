@@ -8,6 +8,7 @@ import PreferenceForm from './components/PreferenceForm';
 import MovieCard from './components/MovieCard';
 import SwipeableMovieCard from './components/SwipeableMovieCard';
 import AuthForm from './components/AuthForm';
+import Header from './components/Header';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
@@ -280,18 +281,11 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white font-sans selection:bg-red-500/30">
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header className="p-6 flex justify-between items-center z-20 bg-black/40 border-b border-white/5 backdrop-blur-md">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center shadow-lg shadow-red-600/20">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path></svg>
-                </div>
-                <h1 className="text-2xl font-bold tracking-tight">CineWise<span className="text-red-500">.AI</span></h1>
-            </div>
-            
-            <div className="flex gap-4">
-               {/* Header links removed as per request */}
-            </div>
-        </header>
+        <Header 
+          currentStep={state.step} 
+          onNavigate={(step) => setState(prev => ({ ...prev, step }))}
+          onLogout={handleLogout}
+        />
 
         <div className="flex-1 overflow-y-auto p-6 relative">
             {state.step === 'campaigns' && (
@@ -385,12 +379,12 @@ const App: React.FC = () => {
 
             {state.step === 'results' && (
               <div className="max-w-7xl mx-auto h-full flex flex-col">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 z-10 relative">
                   <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                     Curated for you
                     {state.isLoading && <span className="text-sm font-normal text-gray-500 animate-pulse ml-2">Brewing magic...</span>}
                   </h2>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 self-end md:self-auto">
                           <div className="bg-gray-800 rounded-full p-1 flex">
                             <button
                               onClick={() => setViewMode('swipe')}
