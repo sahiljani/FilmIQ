@@ -1,6 +1,5 @@
-import React from 'react';
-import { useSpring, animated } from '@react-spring/web';
-import { useDrag } from '@use-gesture/react';
+import React, { useState } from 'react';
+import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
 import { MovieRecommendation, InteractionType } from '../types';
 
 interface Props {
@@ -11,82 +10,78 @@ interface Props {
 }
 
 const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, style }) => {
-  const [{ x, y, rotate, scale }, api] = useSpring(() => ({
-    x: 0,
-    y: 0,
-    rotate: 0,
-    scale: 1,
-  }));
+  const [exitX, setExitX] = useState<number | null>(null);
+  const [exitY, setExitY] = useState<number | null>(null);
 
-  const bind = useDrag(
-    ({ active, movement: [mx, my], direction: [xDir], velocity: [vx] }) => {
-      const trigger = vx > 0.2;
-      
-      if (!active && trigger) {
-        // Determine swipe direction
-        if (Math.abs(mx) > Math.abs(my)) {
-          // Horizontal swipe
-          if (mx > 100) {
-            // Swipe right - Like/Add to list
-            onInteract(movie.id, InteractionType.LIKED);
-            api.start({ x: 1000, rotate: 45, scale: 0.8 });
-          } else if (mx < -100) {
-            // Swipe left - Not interested
-            onInteract(movie.id, InteractionType.DISLIKED);
-            api.start({ x: -1000, rotate: -45, scale: 0.8 });
-          } else {
-            api.start({ x: 0, y: 0, rotate: 0, scale: 1 });
-          }
-        } else {
-          // Vertical swipe
-          if (my < -100) {
-            // Swipe up - Most Liked
-            onMostLiked?.(movie.id);
-            api.start({ y: -1000, rotate: 0, scale: 0.8 });
-          } else if (my > 100) {
-            // Swipe down - Already watched disliked
-            onInteract(movie.id, InteractionType.WATCHED_DISLIKED);
-            api.start({ y: 1000, rotate: 0, scale: 0.8 });
-          } else {
-            api.start({ x: 0, y: 0, rotate: 0, scale: 1 });
-          }
-        }
-      } else {
-        api.start({
-          x: active ? mx : 0,
-          y: active ? my : 0,
-          rotate: active ? mx / 10 : 0,
-          scale: active ? 1.05 : 1,
-        });
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  
+  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const scale = useTransform(x, [-200, 0, 200], [0.9, 1, 0.9]);
+  
+  // Opacity for indicators
+  const likeOpacity = useTransform(x, [20, 150], [0, 1]);
+  const nopeOpacity = useTransform(x, [-150, -20], [1, 0]);
+  const favOpacity = useTransform(y, [-150, -50], [1, 0]);
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = 100;
+    const { offset, velocity } = info;
+
+    if (Math.abs(offset.x) > Math.abs(offset.y)) {
+      // Horizontal
+      if (offset.x > threshold || velocity.x > 500) {
+        setExitX(1000);
+        onInteract(movie.id, InteractionType.LIKED);
+      } else if (offset.x < -threshold || velocity.x < -500) {
+        setExitX(-1000);
+        onInteract(movie.id, InteractionType.DISLIKED);
       }
-    },
-    { axis: undefined }
-  );
-
-  const posterUrl = movie.poster_path 
-    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` 
-    : null;
+    } else {
+      // Vertical
+      if (offset.y < -threshold || velocity.y < -500) {
+        setExitY(-1000);
+        onMostLiked?.(movie.id);
+      } else if (offset.y > threshold || velocity.y > 500) {
+        setExitY(1000);
+        onInteract(movie.id, InteractionType.WATCHED_DISLIKED);
+      }
+    }
+  };
 
   return (
-    <animated.div
-      {...bind()}
+    <motion.div
+      drag
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }} // Snap back if released
+      dragElastic={0.7} // Feel of the drag
+      onDragEnd={handleDragEnd}
       style={{
-        ...style,
         x,
         y,
         rotate,
         scale,
-        touchAction: 'none',
-        userSelect: 'none',
+        ...style,
+        position: 'absolute',
+        cursor: 'grab',
       }}
-      className="absolute w-full h-full cursor-grab active:cursor-grabbing"
+      whileTap={{ cursor: 'grabbing' }}
+      initial={{ scale: 0.9, opacity: 0, y: 50 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      exit={{ 
+        x: exitX ?? (Math.random() > 0.5 ? 1000 : -1000), // Default exit if simply unmounted
+        y: exitY ?? 0,
+        opacity: 0,
+        transition: { duration: 0.3 } 
+      }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className="absolute w-[90%] md:w-[400px] h-[60vh] md:h-[550px] shadow-xl rounded-3xl left-0 right-0 mx-auto top-0 bottom-0 my-auto"
     >
       <div className="relative w-full h-full bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
         {/* Background Poster */}
-        {posterUrl ? (
+        {movie.poster_path ? (
           <div className="absolute inset-0 z-0">
             <img 
-              src={posterUrl} 
+              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} 
               alt={movie.title} 
               className="w-full h-full object-cover"
               draggable={false}
@@ -98,32 +93,26 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
         )}
 
         {/* Swipe Indicators */}
-        <animated.div
-          style={{
-            opacity: x.to((val) => (val > 50 ? (val - 50) / 100 : 0)),
-          }}
+        <motion.div
+          style={{ opacity: likeOpacity }}
           className="absolute top-10 right-10 z-20 bg-green-500/90 text-white px-8 py-3 rounded-full font-bold text-2xl rotate-12 border-4 border-white"
         >
           LIKE
-        </animated.div>
+        </motion.div>
         
-        <animated.div
-          style={{
-            opacity: x.to((val) => (val < -50 ? (-val - 50) / 100 : 0)),
-          }}
+        <motion.div
+          style={{ opacity: nopeOpacity }}
           className="absolute top-10 left-10 z-20 bg-red-500/90 text-white px-8 py-3 rounded-full font-bold text-2xl -rotate-12 border-4 border-white"
         >
           NOPE
-        </animated.div>
+        </motion.div>
 
-        <animated.div
-          style={{
-            opacity: y.to((val) => (val < -50 ? (-val - 50) / 100 : 0)),
-          }}
+        <motion.div
+          style={{ opacity: favOpacity }}
           className="absolute top-1/3 left-1/2 transform -translate-x-1/2 z-20 bg-purple-500/90 text-white px-8 py-3 rounded-full font-bold text-2xl border-4 border-white"
         >
           ⭐ FAVORITE
-        </animated.div>
+        </motion.div>
 
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 z-10 p-6 pb-8">
@@ -163,7 +152,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
           {/* Action Buttons */}
           <div className="mt-6 grid grid-cols-4 gap-3">
             <button
-              onClick={() => onInteract(movie.id, InteractionType.DISLIKED)}
+              onClick={() => { setExitX(-1000); onInteract(movie.id, InteractionType.DISLIKED); }}
               className="w-14 h-14 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
             >
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,7 +161,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
             </button>
             
             <button
-              onClick={() => onMostLiked?.(movie.id)}
+              onClick={() => { setExitY(-1000); onMostLiked?.(movie.id); }}
               className="w-14 h-14 bg-purple-500 hover:bg-purple-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
             >
               <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
@@ -181,7 +170,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
             </button>
 
             <button
-              onClick={() => onInteract(movie.id, InteractionType.WATCHED_LIKED)}
+              onClick={() => { setExitY(1000); onInteract(movie.id, InteractionType.WATCHED_LIKED); }}
               className="w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
             >
               <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
@@ -190,7 +179,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
             </button>
 
             <button
-              onClick={() => onInteract(movie.id, InteractionType.LIKED)}
+              onClick={() => { setExitX(1000); onInteract(movie.id, InteractionType.LIKED); }}
               className="w-14 h-14 bg-green-500 hover:bg-green-600 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition"
             >
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +194,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
           </div>
         </div>
       </div>
-    </animated.div>
+    </motion.div>
   );
 };
 

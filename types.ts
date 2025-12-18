@@ -1,3 +1,4 @@
+
 export enum ContentType {
   MOVIE = 'Movie',
   SERIES = 'Series',
@@ -11,6 +12,14 @@ export interface Preferences {
   yearEnd: number;
   contentType: ContentType;
   keywords: string;
+  campaignId?: number;
+}
+
+export interface Campaign {
+  id: number;
+  name: string;
+  createdAt: string;
+  Preference?: Preferences;
 }
 
 export interface MovieRecommendation {
@@ -54,6 +63,8 @@ export interface AppState {
   recommendations: MovieRecommendation[];
   history: Interaction[];
   mostLiked: MostLikedMovie[];
+  campaigns: Campaign[];
+  currentCampaignId: number | null;
   isLoading: boolean;
-  step: 'setup' | 'results';
+  step: 'setup' | 'results' | 'campaigns';
 }

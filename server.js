@@ -7,6 +7,8 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const { getPendingRecommendations, generateAndSave, getMovieDetails } = require('./backend/recommendationService');
+const jobQueue = require('./backend/jobQueue');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +46,11 @@ const User = sequelize.define('User', {
   resetTokenExpires: { type: DataTypes.DATE, allowNull: true }
 });
 
+const Campaign = sequelize.define('Campaign', {
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  name: { type: DataTypes.STRING, allowNull: false }
+});
+
 const MovieCache = sequelize.define('MovieCache', {
   tmdbId: { type: DataTypes.INTEGER, unique: true, allowNull: false },
   title: { type: DataTypes.STRING, allowNull: false },
@@ -53,6 +60,7 @@ const MovieCache = sequelize.define('MovieCache', {
 
 const Preference = sequelize.define('Preference', {
   userId: { type: DataTypes.INTEGER, allowNull: false },
+  campaignId: { type: DataTypes.INTEGER, allowNull: true },
   language: DataTypes.STRING,
   genre: DataTypes.STRING,
   yearStart: DataTypes.INTEGER,
@@ -70,8 +78,11 @@ const Interaction = sequelize.define('Interaction', {
 
 const SuggestedMovie = sequelize.define('SuggestedMovie', {
   userId: { type: DataTypes.INTEGER, allowNull: false },
+  campaignId: { type: DataTypes.INTEGER, allowNull: true },
   movieTitle: { type: DataTypes.STRING, allowNull: false },
   tmdbId: { type: DataTypes.INTEGER, allowNull: true },
+  status: { type: DataTypes.STRING, defaultValue: 'pending' },
+  data: { type: DataTypes.JSON, allowNull: true },
   suggestedAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
 });
 
@@ -87,6 +98,10 @@ User.hasMany(Preference, { foreignKey: 'userId' });
 User.hasMany(Interaction, { foreignKey: 'userId' });
 User.hasMany(SuggestedMovie, { foreignKey: 'userId' });
 User.hasMany(MostLiked, { foreignKey: 'userId' });
+User.hasMany(Campaign, { foreignKey: 'userId' });
+Campaign.belongsTo(User, { foreignKey: 'userId' });
+Campaign.hasOne(Preference, { foreignKey: 'campaignId' });
+Campaign.hasMany(SuggestedMovie, { foreignKey: 'campaignId' });
 
 // --- MIGRATION DEFINITIONS ---
 const migrations = [
@@ -151,6 +166,31 @@ const migrations = [
         console.log('Migration 006: MostLiked table created with indices.');
       } catch (e) {
         console.log('Migration 006: MostLiked table might already exist, skipping.');
+      }
+    }
+  },
+  {
+    name: '007_update_suggested_movies',
+    run: async (qi) => {
+      try {
+        await qi.addColumn('SuggestedMovies', 'status', { type: DataTypes.STRING, defaultValue: 'pending' });
+        await qi.addColumn('SuggestedMovies', 'data', { type: DataTypes.JSON, allowNull: true });
+        console.log('Migration 007: Added status and data to SuggestedMovies.');
+      } catch (e) {
+        console.log('Migration 007: Columns might already exist, skipping.');
+      }
+    }
+  },
+  {
+    name: '008_add_campaigns',
+    run: async (qi) => {
+      try {
+        await Campaign.sync();
+        await qi.addColumn('Preferences', 'campaignId', { type: DataTypes.INTEGER, allowNull: true });
+        await qi.addColumn('SuggestedMovies', 'campaignId', { type: DataTypes.INTEGER, allowNull: true });
+        console.log('Migration 008: Added Campaigns.');
+      } catch (e) {
+        console.log('Migration 008: Error/Exists', e.message);
       }
     }
   }
@@ -300,8 +340,127 @@ app.post('/api/preferences', authenticateToken, async (req, res) => {
 app.post('/api/interactions', authenticateToken, async (req, res) => {
   try {
     const interaction = await Interaction.create({ ...req.body, userId: req.user.id });
+    
+    // Update status in SuggestedMovie
+    await SuggestedMovie.update(
+      { status: 'processed' },
+      { where: { userId: req.user.id, movieTitle: req.body.movieTitle } }
+    );
+    
     res.json(interaction);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- SERVER-SIDE RECOMMENDATION ENDPOINTS ---
+
+app.get('/api/campaigns', authenticateToken, async (req, res) => {
+    const campaigns = await Campaign.findAll({ 
+        where: { userId: req.user.id },
+        order: [['createdAt', 'DESC']]
+    });
+    res.json(campaigns);
+});
+
+app.post('/api/campaigns', authenticateToken, async (req, res) => {
+    try {
+      const { name, preferences } = req.body;
+      // Create Campaign
+      const campaign = await Campaign.create({
+          userId: req.user.id,
+          name: name || `Campaign ${new Date().toLocaleDateString()}`
+      });
+      
+      // Create Preferences linked to Campaign
+      if (preferences) {
+          await Preference.create({
+              ...preferences,
+              userId: req.user.id,
+              campaignId: campaign.id
+          });
+      }
+      
+      res.json(campaign);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/campaigns/:id', authenticateToken, async (req, res) => {
+    try {
+        const campaign = await Campaign.findOne({
+            where: { id: req.params.id, userId: req.user.id },
+            include: [Preference]
+        });
+        if (!campaign) return res.status(404).json({ error: 'Campaign not found' });
+        res.json(campaign);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/recommendations', authenticateToken, async (req, res) => {
+  try {
+    const campaignId = req.query.campaignId;
+    
+    // 1. Try to get pending recommendations
+    const pending = await getPendingRecommendations(req.user.id, campaignId, SuggestedMovie, MovieCache);
+    
+    res.json({ source: 'cache', recommendations: pending });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/recommendations/generate', authenticateToken, async (req, res) => {
+  try {
+    console.log('[Server] /api/recommendations/generate called for user:', req.user.id);
+    const { preferences, history, campaignId } = req.body;
+    console.log('[Server] Received preferences:', preferences);
+    
+    // preferences might be passed or loaded from DB
+    
+    let userPrefs = preferences;
+    if (!userPrefs) {
+       // If campaignId provided, load from there
+       if (campaignId) {
+          userPrefs = await Preference.findOne({ where: { campaignId } });
+       } else {
+          userPrefs = await Preference.findOne({ where: { userId: req.user.id }, order: [['updatedAt', 'DESC']] });
+       }
+    }
+    
+    let userHistory = history;
+    if (!userHistory) {
+       userHistory = await Interaction.findAll({ where: { userId: req.user.id } });
+    }
+    
+    console.log('[Server] Enqueuing generateAndSave with preferences:', userPrefs);
+    const key = `gen:${req.user.id}`;
+    try {
+      const newRecs = await jobQueue.addJob(key, async () => {
+        const recs = await generateAndSave(
+          req.user.id,
+          campaignId,
+          userPrefs,
+          userHistory || [],
+          SuggestedMovie,
+          MostLiked,
+          MovieCache
+        );
+        return recs;
+      });
+      console.log('[Server] Generated recommendations count:', newRecs.length);
+      res.json({ source: 'generated', recommendations: newRecs });
+    } catch (jobErr) {
+      console.error('[Server] Job error in /api/recommendations/generate:', jobErr?.message || jobErr);
+      // Don't fail hard; return empty list so client can retry/poll
+      res.json({ source: 'generated', recommendations: [] });
+    }
+  } catch (err) {
+    console.error('[Server] Error in /api/recommendations/generate:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -418,16 +577,13 @@ app.post('/api/most-liked', authenticateToken, async (req, res) => {
 app.get('/api/tmdb/cache/:tmdbId', async (req, res) => {
   try {
     const { tmdbId } = req.params;
-    const cache = await MovieCache.findOne({ 
-      where: { 
-        tmdbId, 
-        expiresAt: { [Op.gt]: new Date() } 
-      } 
-    });
-    if (cache) {
-      return res.json(cache.data);
+    // Use service to fetch from Cache or TMDB
+    const data = await getMovieDetails(tmdbId, MovieCache);
+    
+    if (data) {
+      return res.json(data);
     }
-    res.status(404).json({ error: 'Cache miss' });
+    res.status(404).json({ error: 'Movie not found' });
   } catch (err) {
     res.status(500).json({ error: 'Database error' });
   }

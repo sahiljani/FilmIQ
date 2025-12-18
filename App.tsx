@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppState, Preferences, Interaction, InteractionType, MovieRecommendation } from './types';
+import { AnimatePresence } from 'framer-motion';
+import { AppState, Preferences, Interaction, InteractionType, MovieRecommendation, Campaign } from './types';
 import { generateRecommendations } from './services/geminiService';
 import { dbService } from './services/dbService';
 import PreferenceForm from './components/PreferenceForm';
@@ -15,13 +16,17 @@ const App: React.FC = () => {
     recommendations: [],
     history: [],
     mostLiked: [],
+    campaigns: [],
+    currentCampaignId: null,
     isLoading: true,
-    step: 'setup',
+    step: 'setup', 
   });
 
-  const [showDb, setShowDb] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [isResetting, setIsResetting] = useState(false);
+  const [viewMode, setViewMode] = useState<'swipe' | 'grid'>(
+    (localStorage.getItem('cinewise_view') as 'swipe' | 'grid') || 'swipe'
+  );
 
   const initialize = useCallback(async () => {
     const token = localStorage.getItem('cinewise_token');
@@ -32,14 +37,23 @@ const App: React.FC = () => {
 
     setState(prev => ({ ...prev, isLoading: true }));
     try {
-      const { history, preferences } = await dbService.initSession();
-      setUser({ email: 'User' }); // Token is valid if this call succeeds
+      const { history } = await dbService.initSession();
+      
+      // Fetch Campaigns
+      let campaigns: Campaign[] = [];
+      try {
+         const cRes = await fetch('/api/campaigns', { headers: { 'Authorization': `Bearer ${token}` } });
+         if (cRes.ok) campaigns = await cRes.json();
+      } catch(e) { console.error(e); }
+
+      setUser({ email: 'User' }); 
+      
       setState(prev => ({ 
         ...prev, 
         history: history || [], 
-        preferences: preferences || prev.preferences,
+        campaigns,
         isLoading: false,
-        step: preferences ? 'results' : 'setup'
+        step: campaigns.length > 0 ? 'campaigns' : 'setup'
       }));
     } catch (e) {
       localStorage.removeItem('cinewise_token');
@@ -61,6 +75,10 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [initialize]);
 
+  useEffect(() => {
+    try { localStorage.setItem('cinewise_view', viewMode); } catch {}
+  }, [viewMode]);
+
   const handleLogout = () => {
     localStorage.removeItem('cinewise_token');
     setUser(null);
@@ -69,28 +87,99 @@ const App: React.FC = () => {
       recommendations: [],
       history: [],
       mostLiked: [],
+      campaigns: [],
+      currentCampaignId: null,
       isLoading: false,
       step: 'setup',
     });
   };
 
-  const handleStartChain = async (prefs: Preferences) => {
-    setState(prev => ({ ...prev, isLoading: true, preferences: prefs }));
-    await dbService.savePreferences(prefs);
-    const suggestions = await generateRecommendations(prefs, state.history);
-    setState(prev => ({
-      ...prev,
-      isLoading: false,
-      recommendations: suggestions,
-      step: 'results'
-    }));
-  };
-
-  const fetchMore = async (currentHistory?: Interaction[]) => {
-    if (!state.preferences) return;
+  const handleCreateCampaign = async (prefs: Preferences) => {
     setState(prev => ({ ...prev, isLoading: true }));
     
-    // Include both history and current recommendations to avoid duplicates
+    // Create Campaign
+    const name = `${prefs.genre} ${prefs.contentType} (${prefs.yearStart}-${prefs.yearEnd})`;
+    
+    try {
+        const res = await fetch('/api/campaigns', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('cinewise_token')}`
+            },
+            body: JSON.stringify({ name, preferences: prefs })
+        });
+        
+        if (res.ok) {
+            const campaign = await res.json();
+            const campaignId = campaign.id;
+            
+            const prefsWithId = { ...prefs, campaignId };
+            
+            // Trigger generation
+            const suggestions = await generateRecommendations(prefsWithId, state.history);
+            
+            setState(prev => ({
+                ...prev,
+                isLoading: false,
+                preferences: prefsWithId,
+                currentCampaignId: campaignId,
+                campaigns: [campaign, ...prev.campaigns],
+                recommendations: suggestions,
+                step: 'results'
+            }));
+        }
+    } catch (e) {
+        console.error("Error creating campaign", e);
+        setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleSelectCampaign = async (campaign: Campaign) => {
+      setState(prev => ({ ...prev, isLoading: true }));
+      
+      try {
+          const res = await fetch(`/api/campaigns/${campaign.id}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('cinewise_token')}` }
+          });
+          
+          if (res.ok) {
+              const fullCampaign = await res.json();
+              const prefs = fullCampaign.Preference;
+              
+              // Fetch Recommendations (Pending)
+              const recRes = await fetch(`/api/recommendations?campaignId=${campaign.id}`, {
+                  headers: { 'Authorization': `Bearer ${localStorage.getItem('cinewise_token')}` }
+              });
+              
+              let recs = [];
+              if (recRes.ok) {
+                  const data = await recRes.json();
+                  recs = data.recommendations || [];
+              }
+              
+              // Ensure prefs has campaignId
+              const prefsWithId = prefs ? { ...prefs, campaignId: fullCampaign.id } : null;
+
+              setState(prev => ({
+                  ...prev,
+                  isLoading: false,
+                  currentCampaignId: fullCampaign.id,
+                  preferences: prefsWithId,
+                  recommendations: recs,
+                  step: 'results'
+              }));
+          }
+      } catch (e) {
+          console.error(e);
+          setState(prev => ({ ...prev, isLoading: false }));
+      }
+  };
+
+  const fetchMore = async () => {
+    if (!state.preferences || !state.currentCampaignId) return;
+    setState(prev => ({ ...prev, isLoading: true }));
+    
     const allSeenMovies = [
       ...state.history,
       ...state.recommendations.map(r => ({ movieTitle: r.title, interaction: 'seen' as any, timestamp: 0 }))
@@ -98,7 +187,7 @@ const App: React.FC = () => {
     
     const moreSuggestions = await generateRecommendations(
       state.preferences, 
-      currentHistory || allSeenMovies
+      allSeenMovies
     );
     
     setState(prev => ({ ...prev, isLoading: false, recommendations: [...prev.recommendations, ...moreSuggestions] }));
@@ -114,10 +203,8 @@ const App: React.FC = () => {
     
     setState(prev => ({ ...prev, history: newHistory, recommendations: remaining }));
 
-    // Auto-generate more recommendations when only 4 remain (after removing the current one)
-    // This means user is about to interact with the last suggestion
     if (remaining.length === 4 && !state.isLoading) {
-        fetchMore(newHistory);
+        fetchMore();
     }
   };
 
@@ -140,7 +227,6 @@ const App: React.FC = () => {
       
       const data = await response.json();
       if (data.success) {
-        // Update local state
         const existingIndex = state.mostLiked.findIndex(m => m.movieTitle === movie.title);
         let updatedMostLiked;
         if (existingIndex >= 0) {
@@ -156,7 +242,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Reset Password Screen ---
   if (isResetting) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-950 p-6">
@@ -168,7 +253,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- Login/Signup Screen ---
   if (!user) {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black p-6">
@@ -192,6 +276,14 @@ const App: React.FC = () => {
             </div>
             
             <div className="flex gap-4">
+                {state.step !== 'campaigns' && (
+                  <button 
+                      onClick={() => setState(prev => ({ ...prev, step: 'campaigns' }))}
+                      className="px-4 py-2 text-sm font-semibold text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+                  >
+                      All Campaigns
+                  </button>
+                )}
                 <button 
                     onClick={handleLogout}
                     className="px-4 py-2 text-sm font-semibold text-gray-400 hover:text-red-400 transition"
@@ -202,50 +294,108 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 relative">
-            {state.step === 'setup' ? (
-                <div className="h-full flex flex-col justify-center items-center pb-20">
-                    <PreferenceForm onSubmit={handleStartChain} isLoading={state.isLoading} />
-                </div>
-            ) : (
-                <div className="max-w-7xl mx-auto h-full flex flex-col">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                            Curated for you
-                            {state.isLoading && <span className="text-sm font-normal text-gray-500 animate-pulse ml-2">Brewing magic...</span>}
-                        </h2>
-                        <button onClick={() => fetchMore()} disabled={state.isLoading} className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full font-semibold transition active:scale-95 shadow-lg shadow-red-600/20">
-                            More Recommendations
-                        </button>
+            {state.step === 'campaigns' && (
+               <div className="max-w-5xl mx-auto p-6">
+                <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+                  Your Search Campaigns
+                  {state.isLoading && <span className="text-sm font-normal text-gray-500 animate-pulse">Loading...</span>}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <button 
+                    onClick={() => setState(prev => ({...prev, step: 'setup', currentCampaignId: null, preferences: null}))}
+                    className="p-6 bg-red-600/10 border-2 border-dashed border-red-600/30 rounded-2xl hover:bg-red-600/20 transition flex flex-col items-center justify-center h-48 group"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                     </div>
-                    {isMobile ? (
-                        <div className="relative h-[600px] w-full flex justify-center items-center pb-20">
-                            {state.recommendations.length === 0 && !state.isLoading ? (
-                                <div className="py-20 text-center">
-                                    <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
-                                </div>
-                            ) : (
-                                state.recommendations.slice(0, 3).reverse().map((movie, index) => (
-                                    <div key={movie.id} className="absolute" style={{ zIndex: 30 - index * 10 }}>
-                                        <SwipeableMovieCard
-                                            movie={movie}
-                                            onInteract={handleInteraction}
-                                            onMostLiked={handleMostLiked}
-                                        />
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
-                            {state.recommendations.map(movie => <MovieCard key={movie.id} movie={movie} onInteract={handleInteraction} onMostLiked={handleMostLiked} />)}
-                            {state.recommendations.length === 0 && !state.isLoading && (
-                                <div className="col-span-full py-20 text-center">
-                                    <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    <span className="font-bold text-lg text-red-500">Start New Search</span>
+                  </button>
+                  {state.campaigns.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => handleSelectCampaign(c)}
+                      className="p-6 bg-gray-900 border border-gray-800 rounded-2xl hover:border-gray-600 hover:shadow-xl transition text-left h-48 flex flex-col justify-between group relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                         <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path></svg>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-xl mb-1 text-white group-hover:text-red-400 transition truncate pr-2">{c.name}</h3>
+                        <p className="text-gray-500 text-xs">{new Date(c.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="relative z-10">
+                         <div className="inline-block px-3 py-1 rounded-full bg-gray-800 text-xs text-gray-400">
+                            Resume Session →
+                         </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
+              </div>
+            )}
+
+            {state.step === 'setup' && (
+                <div className="h-full flex flex-col justify-center items-center pb-20">
+                    <PreferenceForm onSubmit={handleCreateCampaign} isLoading={state.isLoading} />
+                </div>
+            )}
+
+            {state.step === 'results' && (
+              <div className="max-w-7xl mx-auto h-full flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    Curated for you
+                    {state.isLoading && <span className="text-sm font-normal text-gray-500 animate-pulse ml-2">Brewing magic...</span>}
+                  </h2>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-gray-800 rounded-full p-1 flex">
+                            <button
+                              onClick={() => setViewMode('swipe')}
+                              className={`px-3 py-1.5 text-sm rounded-full ${viewMode==='swipe' ? 'bg-red-600 text-white' : 'text-gray-300'}`}
+                            >Swipe</button>
+                            <button
+                              onClick={() => setViewMode('grid')}
+                              className={`px-3 py-1.5 text-sm rounded-full ${viewMode==='grid' ? 'bg-red-600 text-white' : 'text-gray-300'}`}
+                            >Grid</button>
+                          </div>
+                          <button onClick={() => fetchMore()} disabled={state.isLoading} className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full font-semibold transition active:scale-95 shadow-lg shadow-red-600/20">
+                              More Recommendations
+                          </button>
+                        </div>
+                </div>
+                    {viewMode === 'swipe' ? (
+                      <div className="relative h-[70vh] md:h-[600px] w-full flex justify-center items-center pb-20">
+                          {state.recommendations.length === 0 && !state.isLoading ? (
+                              <div className="py-20 text-center">
+                                  <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
+                              </div>
+                          ) : (
+                              <AnimatePresence>
+                                {state.recommendations.slice(0, 3).reverse().map((movie, index) => (
+                                    <SwipeableMovieCard
+                                        key={movie.id}
+                                        movie={movie}
+                                        onInteract={handleInteraction}
+                                        onMostLiked={handleMostLiked}
+                                        style={{ zIndex: 30 - index * 10 }}
+                                    />
+                                ))}
+                              </AnimatePresence>
+                          )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-20">
+                        {state.recommendations.map(movie => (
+                          <MovieCard key={movie.id} movie={movie} onInteract={handleInteraction} onMostLiked={handleMostLiked} />
+                        ))}
+                        {state.recommendations.length === 0 && !state.isLoading && (
+                          <div className="col-span-full py-20 text-center">
+                            <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+              </div>
             )}
         </div>
       </main>
