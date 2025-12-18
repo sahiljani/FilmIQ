@@ -279,16 +279,18 @@ const App: React.FC = () => {
                 {state.step !== 'campaigns' && (
                   <button 
                       onClick={() => setState(prev => ({ ...prev, step: 'campaigns' }))}
-                      className="px-4 py-2 text-sm font-semibold text-white bg-gray-800 hover:bg-gray-700 rounded-lg transition"
+                      className="w-10 h-10 flex items-center justify-center text-white bg-gray-800 hover:bg-gray-700 rounded-full transition shadow-lg border border-white/5"
+                      title="All Campaigns"
                   >
-                      All Campaigns
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                   </button>
                 )}
                 <button 
                     onClick={handleLogout}
-                    className="px-4 py-2 text-sm font-semibold text-gray-400 hover:text-red-400 transition"
+                    className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-full transition"
+                    title="Logout"
                 >
-                    Logout
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                 </button>
             </div>
         </header>
@@ -358,8 +360,8 @@ const App: React.FC = () => {
                               className={`px-3 py-1.5 text-sm rounded-full ${viewMode==='grid' ? 'bg-red-600 text-white' : 'text-gray-300'}`}
                             >Grid</button>
                           </div>
-                          <button onClick={() => fetchMore()} disabled={state.isLoading} className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full font-semibold transition active:scale-95 shadow-lg shadow-red-600/20">
-                              More Recommendations
+                          <button onClick={() => fetchMore()} disabled={state.isLoading} className="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded-full transition active:scale-95 shadow-lg shadow-red-600/20" title="More Recommendations">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                           </button>
                         </div>
                 </div>

@@ -74,7 +74,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
         transition: { duration: 0.3 } 
       }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-      className="absolute w-[90%] md:w-[400px] h-[70vh] md:h-[650px] shadow-2xl rounded-3xl left-0 right-0 mx-auto top-0 bottom-0 my-auto bg-gray-900 overflow-visible"
+      className="absolute w-[90%] md:w-[400px] h-[60vh] md:h-[550px] shadow-2xl rounded-3xl left-0 right-0 mx-auto top-0 bottom-0 my-auto bg-gray-900 overflow-visible"
     >
       <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black">
         {/* Background Poster */}
@@ -87,7 +87,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
               draggable={false}
             />
              {/* Stronger gradient overlay for readability */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/20 to-black/95"></div>
           </div>
         ) : (
           <div className="absolute inset-0 z-0 bg-gradient-to-br from-purple-900 via-gray-900 to-black"></div>
@@ -140,7 +140,7 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
         </div>
 
         {/* Bottom Content: Overview & Actions */}
-        <div className="absolute bottom-0 left-0 right-0 z-10 p-6 pb-8 bg-gradient-to-t from-black via-black/90 to-transparent pt-20">
+        <div className="absolute bottom-0 left-0 right-0 z-10 p-6 pb-8 bg-gradient-to-t from-black via-black to-transparent pt-24">
           
           <div className="mb-6">
              <div className="flex items-start gap-2 mb-2 text-white/80">
