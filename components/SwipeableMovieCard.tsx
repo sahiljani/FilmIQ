@@ -37,22 +37,13 @@ const SwipeableMovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked, s
         setExitX(-1000);
         onInteract(movie.id, InteractionType.DISLIKED);
       }
-    } else {
-      // Vertical
-      if (offset.y < -threshold || velocity.y < -500) {
-        setExitY(-1000);
-        onMostLiked?.(movie.id);
-      } else if (offset.y > threshold || velocity.y > 500) {
-        setExitY(1000);
-        onInteract(movie.id, InteractionType.WATCHED_DISLIKED);
-      }
     }
   };
 
   return (
     <motion.div
-      drag
-      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.7}
       onDragEnd={handleDragEnd}
       style={{

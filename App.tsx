@@ -457,6 +457,10 @@ const App: React.FC = () => {
                     )}
               </div>
             )}
+            
+            <footer className="w-full py-6 text-center text-gray-500 text-sm border-t border-white/5 mt-auto">
+              Copyright Sahil Jani 2025
+            </footer>
         </div>
       </main>
     </div>

@@ -53,9 +53,11 @@ const MovieCard: React.FC<Props> = ({ movie, onInteract, onMostLiked }) => {
             </div>
           )}
 
-          <p className="text-gray-300 text-sm mb-4 leading-relaxed line-clamp-3">
-            {movie.overview || movie.plot}
-          </p>
+          <div className="max-h-40 overflow-y-auto pr-2 mb-4 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+            <p className="text-gray-300 text-sm leading-relaxed">
+              {movie.overview || movie.plot}
+            </p>
+          </div>
           
           <div className="bg-gray-900/50 p-3 rounded-md border-l-2 border-red-500 mb-4">
              <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">Why Watch?</p>
