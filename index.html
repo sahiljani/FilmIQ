@@ -2,29 +2,63 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>CineWise AI - Smart Recommendations</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['DM Sans', 'sans-serif'],
+              heading: ['Outfit', 'sans-serif'],
+            },
+            colors: {
+              background: '#050505',
+              surface: '#121212',
+              primary: '#E11D48', // Rose 600
+              secondary: '#7C3AED', // Violet 600
+            },
+            height: {
+              'dvh': '100dvh'
+            }
+          }
+        }
+      }
+    </script>
     <style>
-      /* Custom scrollbar for dark theme */
+      /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #1a1a1a; 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #4a4a4a; 
-        border-radius: 4px;
+        background: #333; 
+        border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #6a6a6a; 
+        background: #555; 
+      }
+      
+      body {
+        background-color: #050505;
+        color: #f3f4f6;
+        /* Prevent pull-to-refresh on mobile */
+        overscroll-behavior-y: none;
       }
     </style>
 </head>
-  <body class="bg-gray-950 text-gray-100 antialiased h-screen overflow-hidden">
-    <div id="root" class="h-full"></div>
+  <body class="bg-background text-gray-100 antialiased h-[100dvh] w-full overflow-hidden selection:bg-primary selection:text-white">
+    <div id="root" class="h-full w-full"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>

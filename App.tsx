@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { AppState, Preferences, Interaction, InteractionType, MovieRecommendation, Campaign, MostLikedMovie } from './types';
@@ -40,7 +39,6 @@ const App: React.FC = () => {
     try {
       const { history } = await dbService.initSession();
       
-      // Fetch Campaigns
       let campaigns: Campaign[] = [];
       let mostLiked: MostLikedMovie[] = [];
       try {
@@ -106,7 +104,6 @@ const App: React.FC = () => {
   const handleCreateCampaign = async (prefs: Preferences) => {
     setState(prev => ({ ...prev, isLoading: true }));
     
-    // Create Campaign
     const name = `${prefs.genre} ${prefs.contentType} (${prefs.yearStart}-${prefs.yearEnd})`;
     
     try {
@@ -122,10 +119,7 @@ const App: React.FC = () => {
         if (res.ok) {
             const campaign = await res.json();
             const campaignId = campaign.id;
-            
             const prefsWithId = { ...prefs, campaignId };
-            
-            // Trigger generation
             const suggestions = await generateRecommendations(prefsWithId, state.history);
             
             setState(prev => ({
@@ -155,8 +149,6 @@ const App: React.FC = () => {
           if (res.ok) {
               const fullCampaign = await res.json();
               const prefs = fullCampaign.Preference;
-              
-              // Fetch Recommendations (Pending)
               const recRes = await fetch(`/api/recommendations?campaignId=${campaign.id}`, {
                   headers: { 'Authorization': `Bearer ${localStorage.getItem('cinewise_token')}` }
               });
@@ -166,8 +158,6 @@ const App: React.FC = () => {
                   const data = await recRes.json();
                   recs = data.recommendations || [];
               }
-              
-              // Ensure prefs has campaignId
               const prefsWithId = prefs ? { ...prefs, campaignId: fullCampaign.id } : null;
 
               setState(prev => ({
@@ -220,8 +210,6 @@ const App: React.FC = () => {
   const handleMostLiked = async (movieId: string) => {
     const movie = state.recommendations.find(m => m.id === movieId);
     if (!movie) return;
-
-    // Proceed to next card immediately
     handleInteraction(movieId, InteractionType.LIKED);
     
     try {
@@ -258,7 +246,7 @@ const App: React.FC = () => {
 
   if (isResetting) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-950 p-6">
+      <div className="flex h-[100dvh] items-center justify-center bg-background p-6">
         <ResetPasswordForm onComplete={() => {
             window.history.replaceState({}, document.title, "/");
             setIsResetting(false);
@@ -269,58 +257,63 @@ const App: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black p-6">
-        <AuthForm onSuccess={(dataUser) => {
-          setUser(dataUser);
-          initialize();
-        }} />
+      <div className="flex h-[100dvh] items-center justify-center bg-background relative overflow-hidden p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-background to-background z-0"></div>
+        <div className="relative z-10 w-full max-w-md">
+            <AuthForm onSuccess={(dataUser) => {
+            setUser(dataUser);
+            initialize();
+            }} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white font-sans selection:bg-red-500/30">
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <Header 
-          currentStep={state.step} 
-          onNavigate={(step) => setState(prev => ({ ...prev, step }))}
-          onLogout={handleLogout}
-        />
+    <div className="flex flex-col h-[100dvh] bg-background text-gray-100 font-sans selection:bg-primary/30 overflow-hidden">
+      
+      <Header 
+        currentStep={state.step} 
+        onNavigate={(step) => setState(prev => ({ ...prev, step }))}
+        onLogout={handleLogout}
+      />
 
-        <div className="flex-1 overflow-y-auto p-6 relative">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth">
+          <div className="min-h-full pb-20"> {/* Padding bottom for safety */}
+            
             {state.step === 'campaigns' && (
-               <div className="max-w-5xl mx-auto p-6">
-                <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
-                  Your Search Campaigns
+               <div className="max-w-7xl mx-auto p-4 md:p-8">
+                <h2 className="text-3xl md:text-4xl font-heading font-black mb-8 flex items-center gap-3 text-white">
+                  Your Campaigns
                   {state.isLoading && <span className="text-sm font-normal text-gray-500 animate-pulse">Loading...</span>}
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   <button 
                     onClick={() => setState(prev => ({...prev, step: 'setup', currentCampaignId: null, preferences: null}))}
-                    className="p-6 bg-red-600/10 border-2 border-dashed border-red-600/30 rounded-2xl hover:bg-red-600/20 transition flex flex-col items-center justify-center h-48 group"
+                    className="group relative p-8 rounded-3xl border-2 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 transition-all duration-300 flex flex-col items-center justify-center h-64"
                   >
-                    <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                    <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-primary/30 transition duration-300">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                     </div>
-                    <span className="font-bold text-lg text-red-500">Start New Search</span>
+                    <span className="font-heading font-bold text-xl text-primary">New Search</span>
+                    <p className="text-gray-500 text-sm mt-2">Start a new discovery journey</p>
                   </button>
                   {state.campaigns.map(c => (
                     <button
                       key={c.id}
                       onClick={() => handleSelectCampaign(c)}
-                      className="p-6 bg-gray-900 border border-gray-800 rounded-2xl hover:border-gray-600 hover:shadow-xl transition text-left h-48 flex flex-col justify-between group relative overflow-hidden"
+                      className="group relative p-8 bg-surface border border-white/5 rounded-3xl hover:border-white/20 hover:shadow-2xl transition-all duration-300 text-left h-64 flex flex-col justify-between overflow-hidden"
                     >
-                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
-                         <svg className="w-20 h-20 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path></svg>
+                      <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition duration-500 transform group-hover:scale-110">
+                         <svg className="w-32 h-32 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path></svg>
                       </div>
                       <div>
-                        <h3 className="font-bold text-xl mb-1 text-white group-hover:text-red-400 transition truncate pr-2">{c.name}</h3>
-                        <p className="text-gray-500 text-xs">{new Date(c.createdAt).toLocaleDateString()}</p>
+                        <h3 className="font-heading font-bold text-2xl mb-2 text-white group-hover:text-primary transition-colors line-clamp-2 pr-4">{c.name}</h3>
+                        <p className="text-gray-500 text-sm font-medium">{new Date(c.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                       </div>
-                      <div className="relative z-10">
-                         <div className="inline-block px-3 py-1 rounded-full bg-gray-800 text-xs text-gray-400">
-                            Resume Session →
-                         </div>
+                      <div className="relative z-10 flex items-center gap-2 text-sm font-bold text-gray-400 group-hover:text-white transition-colors">
+                            <span>Resume Session</span>
+                            <svg className="w-4 h-4 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
                       </div>
                     </button>
                   ))}
@@ -329,46 +322,47 @@ const App: React.FC = () => {
             )}
 
             {state.step === 'setup' && (
-                <div className="h-full flex flex-col justify-center items-center pb-20">
+                <div className="min-h-full flex flex-col justify-center items-center py-10 px-4">
                     <PreferenceForm onSubmit={handleCreateCampaign} isLoading={state.isLoading} />
                 </div>
             )}
 
             {state.step === 'bucket' && (
-                <div className="max-w-5xl mx-auto p-6">
-                    <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 text-purple-400">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                <div className="max-w-7xl mx-auto p-4 md:p-8">
+                    <h2 className="text-3xl md:text-4xl font-heading font-black mb-8 flex items-center gap-3 text-secondary">
+                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
                         My Bucket List
                     </h2>
                     {state.mostLiked.length === 0 ? (
-                        <div className="text-center py-20 bg-gray-900 rounded-2xl border border-gray-800">
-                            <p className="text-gray-500 text-lg">Your bucket is empty. Go add some movies!</p>
-                            <button onClick={() => setState(prev => ({ ...prev, step: 'campaigns' }))} className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition">Discover Movies</button>
+                        <div className="text-center py-32 bg-surface rounded-3xl border border-white/5 mx-auto max-w-2xl">
+                            <div className="w-20 h-20 bg-secondary/20 text-secondary rounded-full flex items-center justify-center mx-auto mb-6">
+                                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            </div>
+                            <p className="text-gray-400 text-xl font-medium mb-8">Your bucket is empty.</p>
+                            <button onClick={() => setState(prev => ({ ...prev, step: 'campaigns' }))} className="px-8 py-3 bg-secondary text-white rounded-xl hover:bg-secondary/80 transition font-bold shadow-lg shadow-secondary/20">Discover Movies</button>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {state.mostLiked.map((item, idx) => (
-                                <div key={idx} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:shadow-purple-900/20 hover:shadow-xl transition p-4 flex gap-4">
-                                   {/* Since mostLiked only stores basic info, we might not have the poster unless cached. For now, show title. */}
+                                <div key={idx} className="bg-surface border border-white/5 rounded-2xl overflow-hidden hover:border-secondary/50 transition duration-300 p-5 flex gap-5 group">
                                     <div className="flex-1">
-                                        <h3 className="font-bold text-lg text-white mb-1">{item.movieTitle}</h3>
-                                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                                            <span>TMDB ID: {item.tmdbId}</span>
+                                        <h3 className="font-heading font-bold text-xl text-white mb-2 group-hover:text-secondary transition-colors">{item.movieTitle}</h3>
+                                        <div className="flex items-center gap-2 text-xs text-gray-500 font-mono mb-4">
+                                            <span>ID: {item.tmdbId}</span>
                                         </div>
-                                        <div className="mt-4 flex gap-2">
-                                            <a 
-                                              href={`https://www.themoviedb.org/movie/${item.tmdbId}`} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1 rounded-full text-white transition border border-gray-700"
-                                            >
-                                                View on TMDB
-                                            </a>
-                                        </div>
+                                        <a 
+                                            href={`https://www.themoviedb.org/movie/${item.tmdbId}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-xs bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-white transition inline-flex items-center gap-2"
+                                        >
+                                            View Details
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
                                     </div>
-                                    <div className="flex flex-col items-center justify-center bg-gray-800/50 rounded-lg px-3 py-2">
-                                        <span className="text-2xl font-bold text-purple-500">{item.likeCount}</span>
-                                        <span className="text-[10px] uppercase text-gray-500 font-bold">Likes</span>
+                                    <div className="flex flex-col items-center justify-center bg-secondary/10 rounded-xl px-4 py-2 border border-secondary/20">
+                                        <span className="text-2xl font-black text-secondary">{item.likeCount}</span>
+                                        <span className="text-[10px] uppercase text-secondary/60 font-bold tracking-wider">Likes</span>
                                     </div>
                                 </div>
                             ))}
@@ -378,37 +372,38 @@ const App: React.FC = () => {
             )}
 
             {state.step === 'results' && (
-              <div className="max-w-7xl mx-auto h-full flex flex-col">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 z-10 relative">
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    Curated for you
-                    {state.isLoading && <span className="text-sm font-normal text-gray-500 animate-pulse ml-2">Brewing magic...</span>}
+              <div className="max-w-7xl mx-auto h-full flex flex-col p-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 relative z-10">
+                  <h2 className="text-2xl md:text-3xl font-heading font-black text-white flex items-center gap-3">
+                    Curated Picks
+                    {state.isLoading && <span className="text-sm font-normal text-gray-500 animate-pulse bg-white/5 px-2 py-1 rounded-lg">Brewing...</span>}
                   </h2>
-                        <div className="flex items-center gap-3 self-end md:self-auto">
-                          <div className="bg-gray-800 rounded-full p-1 flex">
+                        <div className="flex items-center gap-4 self-end md:self-auto">
+                          <div className="bg-surface border border-white/10 rounded-xl p-1 flex">
                             <button
                               onClick={() => setViewMode('swipe')}
-                              className={`px-3 py-1.5 text-sm rounded-full ${viewMode==='swipe' ? 'bg-red-600 text-white' : 'text-gray-300'}`}
+                              className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${viewMode==='swipe' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}
                             >Swipe</button>
                             <button
                               onClick={() => setViewMode('grid')}
-                              className={`px-3 py-1.5 text-sm rounded-full ${viewMode==='grid' ? 'bg-red-600 text-white' : 'text-gray-300'}`}
+                              className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${viewMode==='grid' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-white'}`}
                             >Grid</button>
                           </div>
-                          <button onClick={() => fetchMore()} disabled={state.isLoading} className="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded-full transition active:scale-95 shadow-lg shadow-red-600/20" title="More Recommendations">
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                          <button onClick={() => fetchMore()} disabled={state.isLoading} className="w-11 h-11 flex items-center justify-center bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl transition active:scale-95" title="Load More">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                           </button>
                         </div>
                 </div>
                     {viewMode === 'swipe' ? (
-                      <div className="relative h-[70vh] md:h-[600px] w-full flex flex-col justify-center items-center pb-20">
+                      <div className="relative flex-1 min-h-[600px] w-full flex flex-col justify-center items-center">
                           {state.recommendations.length === 0 && !state.isLoading ? (
-                              <div className="py-20 text-center">
-                                  <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
+                              <div className="py-20 text-center bg-surface border border-white/5 rounded-3xl p-10 max-w-lg">
+                                  <p className="text-gray-400 text-xl font-medium mb-4">That's all for now!</p>
+                                  <button onClick={() => fetchMore()} className="px-6 py-2 bg-primary text-white rounded-lg font-bold">Load More</button>
                               </div>
                           ) : (
                               <>
-                                <div className="relative w-full h-full flex justify-center items-center">
+                                <div className="relative w-full h-full flex justify-center items-center perspective-1000">
                                     <AnimatePresence>
                                         {state.recommendations.slice(0, 3).reverse().map((movie, index) => (
                                             <SwipeableMovieCard
@@ -421,10 +416,9 @@ const App: React.FC = () => {
                                         ))}
                                     </AnimatePresence>
                                 </div>
-                                <div className="mt-8 flex flex-wrap justify-center gap-6 text-xs text-gray-500 font-medium uppercase tracking-widest opacity-60">
-                                    <span className="flex items-center gap-2"><span className="text-red-500">←</span> Swipe Left to Dislike</span>
-                                    <span className="flex items-center gap-2"><span className="text-green-500">→</span> Swipe Right to Like</span>
-                                    <span className="flex items-center gap-2"><svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg> Save to Bucket</span>
+                                <div className="mt-8 flex flex-wrap justify-center gap-8 text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] opacity-50">
+                                    <span className="flex items-center gap-2"><span className="text-primary text-base">←</span> Swipe Left to Dislike</span>
+                                    <span className="flex items-center gap-2"><span className="text-green-500 text-base">→</span> Swipe Right to Like</span>
                                 </div>
                               </>
                           )}
@@ -435,19 +429,19 @@ const App: React.FC = () => {
                           <MovieCard key={movie.id} movie={movie} onInteract={handleInteraction} onMostLiked={handleMostLiked} />
                         ))}
                         {state.recommendations.length === 0 && !state.isLoading && (
-                          <div className="col-span-full py-20 text-center">
-                            <p className="text-gray-500 text-lg">No more suggestions. Try updating your preferences!</p>
-                          </div>
+                           <div className="col-span-full py-20 text-center">
+                             <button onClick={() => fetchMore()} className="px-8 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-bold transition">Load More Suggestions</button>
+                           </div>
                         )}
                       </div>
                     )}
               </div>
             )}
             
-            <footer className="w-full py-6 text-center text-gray-500 text-sm border-t border-white/5 mt-auto">
-              Copyright Sahil Jani 2025
+            <footer className="w-full py-8 text-center text-gray-600 text-sm border-t border-white/5 mt-auto">
+              <p>&copy; {new Date().getFullYear()} Sahil Jani. All rights reserved.</p>
             </footer>
-        </div>
+          </div>
       </main>
     </div>
   );
@@ -464,7 +458,7 @@ const ResetPasswordForm = ({ onComplete }: { onComplete: () => void }) => {
     const token = new URLSearchParams(window.location.search).get('token');
     try {
       await dbService.resetPassword({ token, newPassword: password });
-      setStatus({ type: 'success', text: 'Password reset successfully! Redirecting to login...' });
+      setStatus({ type: 'success', text: 'Password reset successfully! Redirecting...' });
       setTimeout(onComplete, 2500);
     } catch (err: any) {
       setStatus({ type: 'error', text: err.message });
@@ -474,30 +468,30 @@ const ResetPasswordForm = ({ onComplete }: { onComplete: () => void }) => {
   };
 
   return (
-    <div className="w-full max-w-md p-8 bg-gray-900 border border-white/10 rounded-2xl shadow-2xl">
-      <h2 className="text-3xl font-bold text-white mb-2">New Password</h2>
-      <p className="text-gray-400 text-sm mb-8">Enter your new secure password below.</p>
+    <div className="w-full max-w-md p-10 bg-surface border border-white/10 rounded-3xl shadow-2xl">
+      <h2 className="text-3xl font-heading font-black text-white mb-2">New Password</h2>
+      <p className="text-gray-400 text-sm mb-8">Secure your account with a strong password.</p>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-xs text-gray-400 mb-2 font-bold uppercase tracking-widest">New Password</label>
+          <label className="block text-xs text-gray-500 mb-2 font-bold uppercase tracking-widest">New Password</label>
           <input 
             type="password" 
             value={password} 
             onChange={(e) => setPassword(e.target.value)} 
-            className="w-full bg-black/40 border border-gray-800 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-red-600 outline-none transition" 
+            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition" 
             required 
             minLength={6}
           />
         </div>
         {status && (
-          <div className={`p-4 rounded-lg text-sm font-medium ${status.type === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-green-500/10 text-green-500 border border-green-500/20'}`}>
+          <div className={`p-4 rounded-xl text-sm font-bold ${status.type === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
             {status.text}
           </div>
         )}
         <button 
           type="submit" 
           disabled={loading} 
-          className="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-lg transition-all active:scale-95 disabled:opacity-50"
+          className="w-full py-4 bg-primary hover:bg-rose-700 text-white rounded-xl font-bold text-lg transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-primary/25"
         >
           {loading ? 'Updating...' : 'Set New Password'}
         </button>
